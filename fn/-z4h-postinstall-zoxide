@@ -1,0 +1,68 @@
+#!/usr/bin/env zsh
+
+eval "$_z4h_opt"
+
+if [[ -e $Z4H/.updating ]]; then
+  print -ru2 -- ${(%):-"%F{3}z4h%f: updating %Bzoxide%b binary"}
+else
+  print -ru2 -- ${(%):-"%F{3}z4h%f: fetching %Bzoxide%b binary"}
+fi
+
+local v=0.9.8 uname_sm target url
+[[ ! -v commands[uname] ]] || uname_sm=$(uname -sm) || return
+
+case $uname_sm in
+  'Darwin arm64')   target=aarch64-apple-darwin ;;
+  'Darwin x86_64')  target=x86_64-apple-darwin  ;;
+  'Linux x86_64')   target=x86_64-unknown-linux-musl ;;
+  'Linux aarch64')  target=aarch64-unknown-linux-musl ;;
+  *)
+    print -Pru2 -- "%F{3}z4h%f: unsupported platform for %Bzoxide%b: %F{1}${uname_sm//\%/%%}%f"
+    return 1
+  ;;
+esac
+
+url=https://github.com/ajeetdsouza/zoxide/releases/download/v$v/zoxide-$v-$target.tar.gz
+
+local err archive=$Z4H_PACKAGE_DIR/zoxide.tar.gz tmp
+if (( $+commands[curl] )); then
+  err="$(command curl -fsSL -- $url 2>&1 >$archive)"
+elif (( $+commands[wget] )); then
+  err="$(command wget -O-   -- $url 2>&1 >$archive)"
+else
+  print -Pru2 -- "%F{3}z4h%f: please install %F{1}curl%f or %F{1}wget%f"
+  return 1
+fi
+if (( $? )); then
+  print -ru2 -- $err
+  print -Pru2 -- "%F{3}z4h%f: failed to download %F{1}${url//\%/%%}%f"
+  return 1
+fi
+
+[[ -e $Z4H_PACKAGE_DIR/bin ]] || zf_mkdir -- $Z4H_PACKAGE_DIR/bin || return
+
+if (( $+commands[mktemp] )); then
+  tmp="$(command mktemp -d -- $Z4H_PACKAGE_DIR/.tmp.zoxide.XXXXXXXXXX)" || return
+else
+  tmp=$Z4H_PACKAGE_DIR/.tmp.zoxide.$$; zf_rm -rf -- $tmp || return; zf_mkdir -- $tmp || return
+fi
+
+{
+  command tar -C $tmp -xzf $archive || return
+  local bin=($tmp/**/zoxide(N)) man=($tmp/**/zoxide.1(N))
+  if (( $#bin != 1 )); then
+    print -Pru2 -- "%F{3}z4h%f: invalid zoxide archive layout"
+    return 1
+  fi
+  command cp -- $bin[1] $Z4H_PACKAGE_DIR/bin/zoxide || return
+  chmod +x -- $Z4H_PACKAGE_DIR/bin/zoxide 2>/dev/null || true
+  if (( $#man == 1 )); then
+    local mandir=$Z4H_PACKAGE_DIR/man/man1
+    zf_mkdir -p -- $mandir || return
+    command cp -- $man[1] $mandir/ || return
+  fi
+} always {
+  zf_rm -- $archive 2>/dev/null || true
+  zf_rm -rf -- $tmp 2>/dev/null || true
+}
+
