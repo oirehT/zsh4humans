@@ -21,6 +21,7 @@ If you want a great shell that just works, this project is for you.
   * 5.3. [Searching command history](#searching-command-history)
   * 5.4. [Interactive search with `fzf`](#interactive-search-with-fzf)
   * 5.5. [SSH](#ssh)
+  * 5.6. [zoxide quick jumping](#zoxide-quick-jumping)
 * 6. [Customization](#customization)
   * 6.1. [Customizing prompt](#customizing-prompt)
   * 6.2. [Customizing appearance](#customizing-appearance)
@@ -168,6 +169,18 @@ over to it. The first login to a remote host may take some time. After that it's
 
 Search for "ssh" in your `~/.zshrc` for information on how to enable and configure SSH
 teleportation.
+
+### zoxide quick jumping
+
+Zsh for Humans integrates with [zoxide](https://github.com/ajeetdsouza/zoxide) for lightning-fast
+directory jumping.
+
+- Default hotkey: Press `Ctrl+F` to execute `zi` and interactively jump between directories.
+- Fuzzy directory search: zoxide works together with `fzf` to fuzzy-find directories, which inspired
+  adding this integration to the Zsh for Humans configuration.
+- Zero setup: This integration is enabled out of the box—no manual steps are required.
+
+Credit for the `Ctrl+F` → `zi` idea: [ChrisTitusTech](https://github.com/ChrisTitusTech).
 
 ## Customization
 
