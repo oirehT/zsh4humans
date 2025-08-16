@@ -1,0 +1,10 @@
+# Shared customizations for both macOS and PC
+
+# Initialize zoxide integration.
+eval "$(zoxide init zsh)"
+
+# Bind Ctrl+F to run 'zi' (only in interactive shells)
+if [[ -o interactive ]]; then
+  bindkey -s '^F' 'zi\n'
+fi
+
