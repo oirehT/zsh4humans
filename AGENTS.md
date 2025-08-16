@@ -10,7 +10,7 @@
 
 ## Build, Test, and Development Commands
 - Run locally from checkout:
-  `Z4H=$PWD Z4H_URL="https://raw.githubusercontent.com/romkatv/zsh4humans/v5" zsh -ic '. ./z4h.zsh'`
+  `Z4H=$PWD Z4H_URL="https://raw.githubusercontent.com/oirehT/zsh4humans/v5" zsh -ic '. ./z4h.zsh'`
 - Syntax check zsh: `zsh -n main.zsh fn/<file>`
 - Lint POSIX sh (optional): `shellcheck sc/install-tmux`
 - No build step; `.zwc` files are generated at runtime and ignored by git.
@@ -32,4 +32,3 @@
 ## Security & Configuration Tips
 - Avoid `sudo` in interactive paths; installers handle privilege checks.
 - Quote inputs; treat `Z4H*` vars as untrusted.
-
