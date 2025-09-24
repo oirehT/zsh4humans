@@ -60,12 +60,21 @@ if (( _z4h_use[powerlevel10k] && ! $#POWERLEVEL9K_CONFIG_FILE )) ; then
 fi
 
 # Enable command_not_found_handler if possible.
+local -i _z4h_have_homebrew_cnf=0
+if [[ -v commands[brew] && -n $HOMEBREW_REPOSITORY ]]; then
+  local _z4h_cnf_path
+  for _z4h_cnf_path in \
+      $HOMEBREW_REPOSITORY/Library/Homebrew/cmd/which-formula.rb \
+      $HOMEBREW_REPOSITORY/Library/Taps/homebrew/homebrew-command-not-found/cmd/which-formula.rb; do
+    if [[ -e $_z4h_cnf_path ]]; then
+      _z4h_have_homebrew_cnf=1
+      break
+    fi
+  done
+fi
 if [[ -v functions[command_not_found_handler] ]]; then
   # Already installed or not needed.
-elif [[ -v commands[brew] &&
-        -n $HOMEBREW_REPOSITORY &&
-        -e $HOMEBREW_REPOSITORY/Library/Taps/homebrew/homebrew-command-not-found/cmd/which-formula.rb ||
-        -x /usr/lib/command-not-found ]]; then
+elif (( _z4h_have_homebrew_cnf )) || [[ -x /usr/lib/command-not-found ]]; then
   autoload +X -Uz -- -z4h-command-not-found
   builtin functions -c -- -z4h-command-not-found command_not_found_handler
 elif [[ -e /etc/zsh_command_not_found ]]; then

@@ -365,10 +365,17 @@ function -z4h-cmd-init() {
       _z4h_install_queue+=(systemd)
     fi
     local brew
-    if [[ -n $HOMEBREW_REPOSITORY(#qNU) &&
-          ! -e $HOMEBREW_REPOSITORY/Library/Taps/homebrew/homebrew-command-not-found/cmd/which-formula.rb &&
-          -v commands[brew] ]]; then
-      brew=homebrew-command-not-found
+    if [[ -n $HOMEBREW_REPOSITORY(#qNU) && -v commands[brew] ]]; then
+      local _z4h_cnf_path installed=0
+      for _z4h_cnf_path in \
+          $HOMEBREW_REPOSITORY/Library/Homebrew/cmd/which-formula.rb \
+          $HOMEBREW_REPOSITORY/Library/Taps/homebrew/homebrew-command-not-found/cmd/which-formula.rb; do
+        if [[ -e $_z4h_cnf_path ]]; then
+          installed=1
+          break
+        fi
+      done
+      (( installed )) || brew=homebrew-command-not-found
     fi
     _z4h_install_queue+=(
       zsh-history-substring-search zsh-autosuggestions zsh-completions

@@ -23,13 +23,19 @@ fi
       return 127
     fi
   fi
-  if [[ -v commands[brew] &&
-        -n $HOMEBREW_REPOSITORY &&
-        -e $HOMEBREW_REPOSITORY/Library/Taps/homebrew/homebrew-command-not-found/cmd/which-formula.rb ]]; then
-    if msg="$(command brew which-formula --explain $1 2>/dev/null)" && [[ -n $msg ]]; then
-      print -r -- $msg
-      return 127
-    fi
+  if [[ -v commands[brew] && -n $HOMEBREW_REPOSITORY ]]; then
+    local _z4h_cnf_path
+    for _z4h_cnf_path in \
+        $HOMEBREW_REPOSITORY/Library/Homebrew/cmd/which-formula.rb \
+        $HOMEBREW_REPOSITORY/Library/Taps/homebrew/homebrew-command-not-found/cmd/which-formula.rb; do
+      if [[ -e $_z4h_cnf_path ]]; then
+        if msg="$(command brew which-formula --explain $1 2>/dev/null)" && [[ -n $msg ]]; then
+          print -r -- $msg
+          return 127
+        fi
+        break
+      fi
+    done
   fi
   print -r -- "zsh: command not found: $1"
   return 127
