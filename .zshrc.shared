@@ -1,5 +1,19 @@
 # Shared customizations for both macOS and PC
 
+# Keep a large, shared history file in the default location so every shell
+# instance reads from and appends to the same command log.
+HISTFILE=~/.zsh_history
+HISTSIZE=10000000
+SAVEHIST=10000000
+
+# Append commands instead of overwriting history on shell exit, merge commands
+# from concurrent shells, keep timestamps, and avoid storing duplicate entries.
+setopt APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_SAVE_NO_DUPS
+
 # Initialize zoxide integration.
 eval "$(zoxide init zsh)"
 
@@ -7,4 +21,3 @@ eval "$(zoxide init zsh)"
 if [[ -o interactive ]]; then
   bindkey -s '^F' 'zi\n'
 fi
-
