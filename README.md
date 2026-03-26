@@ -188,6 +188,15 @@ You can (and should) edit `~/.zshrc` to customize your shell. It's a very good i
 the whole file to see which customization options are in there and to flip some of them to your
 liking.
 
+If you want a stable place for personal additions that should stay separate
+from the shipped template, put them in `~/.zshrc.local`. The default
+`~/.zshrc` sources that file automatically, and full updates keep using it as
+the home for migrated tail customizations.
+
+You can also keep adding personal lines at the end of `~/.zshrc`. Full updates
+preserve those appended customizations by moving them into `~/.zshrc.local`,
+which is then sourced automatically by the refreshed `~/.zshrc`.
+
 When adding your customizations, put them next to the existing lines that do similar things. The
 default `~/.zshrc` contains the following types of customizations that should serve as examples:
 
@@ -263,16 +272,27 @@ create these files** unless you are absolutely certain you need them.
 
 ## Updating
 
-Run `z4h update` to update Zsh for Humans. There is no update mechanism for `~/.zshrc` itself.
+If you want to refresh the shipped startup files as well as the installed
+runtime, use the full updater.
 
-If you are updating from a checkout of this repository, run `./update` instead.
-It pulls the checkout forward, merges your existing edits from `~/.zshenv` and
-`~/.zshrc` onto the freshly pulled templates, keeps backups under
-`~/zsh-backup/update-*`, and then runs `z4h update`.
+Run `z4h upgrade` from any directory. It reuses the recorded upgrade source
+and performs the same full workflow as `./update`.
 
-After the first successful `./update`, you can run `z4h upgrade` from any
-directory. It reuses the recorded upgrade source and invokes the same full
-workflow as `./update`.
+If you are updating from a checkout of this repository, you can run `./update`
+directly instead.
+
+The full updater:
+- pulls or refreshes the recorded upgrade source
+- merges your existing edits from `~/.zshenv` and `~/.zshrc` onto the fresh
+  shipped templates
+- preserves personal additions appended to the end of `~/.zshrc` by moving
+  them into `~/.zshrc.local`
+- keeps backups under `~/zsh-backup/update-*`
+- finishes by running `z4h update`
+
+Run `z4h update` when you only want to refresh the installed Zsh for Humans
+runtime in `$Z4H`. It does not modify `~/.zshenv`, `~/.zshrc`, or
+`~/.zshrc.local`.
 
 Fresh installs are ready too. If the initial install is launched from a
 checkout with `./install`, that checkout path is recorded during installation.
