@@ -66,3 +66,20 @@ HOME=$home_dir Z4H_UPDATE_SKIP_GIT=1 Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$
 grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc"
 ! grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc.local"
 grep -q "alias gs='git status -sb'" "$home_dir/.zshrc.local"
+
+# Simulate a previously broken run that moved the hook block into ~/.zshrc.local
+# and removed it from ~/.zshrc. The updater must repair that shape.
+awk '
+  /Load personal customizations that should survive template refreshes\./ { skip = 1; next }
+  skip && /z4h source ~\/\.zshrc\.local/ { skip = 0; next }
+  { print }
+' "$home_dir/.zshrc" >"$home_dir/.zshrc.tmp"
+mv -- "$home_dir/.zshrc.tmp" "$home_dir/.zshrc"
+printf '\n# Load personal customizations that should survive template refreshes.\nz4h source ~/.zshrc.local\n' \
+  >>"$home_dir/.zshrc.local"
+
+HOME=$home_dir Z4H_UPDATE_SKIP_GIT=1 Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$base_dir \
+  "$test_repo/update"
+
+grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc"
+! grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc.local"

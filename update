@@ -74,6 +74,8 @@ _z4h_update_timestamp="$('command' 'date' '+%Y%m%d-%H%M%S')" || 'exit'
 _z4h_update_backup_dir="${Z4H_UPDATE_BACKUP_ROOT:-$_z4h_update_home/zsh-backup}/update-$_z4h_update_timestamp"
 'command' 'mkdir' '-p' '--' "$_z4h_update_backup_dir" || 'exit'
 _z4h_update_local_backed_up=''
+_z4h_update_local_comment='# Load personal customizations that should survive template refreshes.'
+_z4h_update_local_hook='z4h source ~/.zshrc.local'
 
 _z4h_update_extract_zshrc_tail() {
   _z4h_update_current="$1"
@@ -89,7 +91,8 @@ _z4h_update_extract_zshrc_tail() {
   'command' 'awk' '
     BEGIN {
       mode = "managed"
-      local_hook = "z4h source ~/.zshrc.local"
+      local_comment = "'"$_z4h_update_local_comment"'"
+      local_hook = "'"$_z4h_update_local_hook"'"
       shared_hook = "z4h source \"$Z4H/zsh4humans/.zshrc.shared\""
       split_after = shared_hook
     }
@@ -113,8 +116,24 @@ _z4h_update_extract_zshrc_tail() {
 _z4h_update_migrate_zshrc_tail() {
   _z4h_update_tail="$1"
   _z4h_update_local="$_z4h_update_zdotdir/.zshrc.local"
+  _z4h_update_tail_clean="$_z4h_update_tmp/.zshrc.tail.clean"
 
   '[' '-s' "$_z4h_update_tail" ']' || 'return'
+
+  # Drop the managed hook block if it was previously migrated by an older,
+  # buggy updater run. Only user content after that block belongs in
+  # ~/.zshrc.local.
+  'command' 'awk' '
+    BEGIN {
+      local_comment = "'"$_z4h_update_local_comment"'"
+      local_hook = "'"$_z4h_update_local_hook"'"
+    }
+    $0 == local_comment { next }
+    $0 == local_hook { next }
+    { print }
+  ' "$_z4h_update_tail" >"$_z4h_update_tail_clean" || 'exit'
+
+  '[' '-s' "$_z4h_update_tail_clean" ']' || 'return'
 
   if '[' '-e' "$_z4h_update_local" '-a' -z "$_z4h_update_local_backed_up" ']'; then
     'command' 'cp' '-p' '--' "$_z4h_update_local" "$_z4h_update_backup_dir/.zshrc.local" || 'exit'
@@ -126,8 +145,36 @@ _z4h_update_migrate_zshrc_tail() {
       'printf' '\n'
     fi
     'printf' '# Migrated from ~/.zshrc by ./update on %s\n' "$_z4h_update_timestamp"
-    'command' 'cat' '--' "$_z4h_update_tail"
+    'command' 'cat' '--' "$_z4h_update_tail_clean"
   } >>"$_z4h_update_local" || 'exit'
+}
+
+_z4h_update_normalize_local_hook() {
+  _z4h_update_rc="$_z4h_update_zdotdir/.zshrc"
+  _z4h_update_local="$_z4h_update_zdotdir/.zshrc.local"
+  _z4h_update_rc_tmp="$_z4h_update_tmp/.zshrc.normalized"
+  _z4h_update_local_tmp="$_z4h_update_tmp/.zshrc.local.normalized"
+
+  if ! 'command' 'grep' '-qxF' -- "$_z4h_update_local_hook" "$_z4h_update_rc" 2>'/dev/null'; then
+    {
+      'command' 'cat' '--' "$_z4h_update_rc"
+      'printf' '\n%s\n%s\n' "$_z4h_update_local_comment" "$_z4h_update_local_hook"
+    } >"$_z4h_update_rc_tmp" || 'exit'
+    'command' 'mv' '--' "$_z4h_update_rc_tmp" "$_z4h_update_rc" || 'exit'
+  fi
+
+  if '[' '-e' "$_z4h_update_local" ']'; then
+    'command' 'awk' '
+      BEGIN {
+        local_comment = "'"$_z4h_update_local_comment"'"
+        local_hook = "'"$_z4h_update_local_hook"'"
+      }
+      $0 == local_comment { next }
+      $0 == local_hook { next }
+      { print }
+    ' "$_z4h_update_local" >"$_z4h_update_local_tmp" || 'exit'
+    'command' 'mv' '--' "$_z4h_update_local_tmp" "$_z4h_update_local" || 'exit'
+  fi
 }
 
 _z4h_update_merge_file() {
@@ -200,6 +247,7 @@ _z4h_update_merge_file() {
 _z4h_update_merge_file "$_z4h_update_zdotdir/.zshenv" "$_z4h_update_base_dir/.zshenv" .zshenv '.zshenv'
 _z4h_update_merge_file "$_z4h_update_zdotdir/.zshrc" "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" \
   "$_z4h_update_zshrc_variant" '.zshrc'
+_z4h_update_normalize_local_hook
 
 >&2 'printf' '\033[33mz4h\033[0m: backups saved in \033[4m%s\033[0m\n' "$_z4h_update_backup_dir"
 
