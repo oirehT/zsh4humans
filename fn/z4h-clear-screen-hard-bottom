@@ -3,7 +3,14 @@
 [[ -v _z4h_tty_fd ]] || return
 
 builtin echoti civis >&$_z4h_tty_fd
-builtin print -rnu $_z4h_tty_fd -- $'\e[H\e[2J'"${(pl:$((LINES-1))::\n:)}"
+local clear=$'\e[H\e[2J'
+local -i i
+# Build the trailing blank lines explicitly so this widget remains compatible
+# with zsh's noexec parser; the more compact parameter-expansion form trips it.
+for (( i = 1; i < LINES; ++i )); do
+  clear+=$'\n'
+done
+builtin print -rnu $_z4h_tty_fd -- $clear
 builtin zle -I
 builtin zle -R
 builtin print -rnu $_z4h_tty_fd -- $'\e[3J'

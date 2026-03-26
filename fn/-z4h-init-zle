@@ -913,7 +913,7 @@ else
 fi
 
 # Define _zsh_highlight before sourcing history-substring-search to work around bugs
-# in the latter: https://github.com/romkatv/zsh4humans/issues/58.
+# in the latter: https://github.com/oirehT/zsh4humans/issues/58.
 function _zsh_highlight() {
   if [[ $WIDGET == zle-line-finish || ! -v _z4h_substring_search_highlight ]]; then
     region_highlight=()

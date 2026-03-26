@@ -133,7 +133,7 @@ local preview='printf "%s" {} | command cut -f2- -d'$'\1'
         # This `noglob` is a workaround for a bug in zsh that can be
         # triggered by certain corrupted history files.
         #
-        # https://github.com/romkatv/zsh4humans/issues/313
+        # https://github.com/oirehT/zsh4humans/issues/313
         (( $#history )) && noglob printf '%s\000' "${history[@]}"
       } | {
         {

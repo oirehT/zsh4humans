@@ -5,13 +5,17 @@
 local fd=${_z4h_tty_fd-1}
 [[ -t $fd ]] || return
 
-# Note: `read -u $fd` doesn't work.
+# Use a /dev/fd path instead of a dynamic descriptor redirect so this helper
+# remains compatible with zsh's `-n` syntax checks while still talking to the
+# same tty descriptor at runtime.
+local tty=/dev/fd/$fd
 
 local resp
-IFS= builtin read -srt 5 -d R resp$'?\e[6n' <&$fd || return
+print -rn -- $'\e[6n' >$tty || return
+IFS= builtin read -srt 5 -d R resp <$tty || return
 
 while [[ $resp != *$'\e['<->';'<-> ]]; do
-  IFS= builtin read -srt 5 -d R resp <&$fd || return
+  IFS= builtin read -srt 5 -d R resp <$tty || return
 done
 
 if (( ARGC )); then

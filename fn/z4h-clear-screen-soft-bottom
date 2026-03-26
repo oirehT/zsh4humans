@@ -4,8 +4,16 @@
 
 builtin echoti civis >&$_z4h_tty_fd
 local -i cursor_x cursor_y
+local -i line_count i
 -z4h-get-cursor-pos || cursor_y=0
-builtin print -rnu $_z4h_tty_fd -- "${(pl:$((2 * LINES - cursor_y - 1))::\n:)}"
+local padding=
+# Keep this expansion explicit for the same reason as the hard-bottom widget:
+# zsh's noexec parser rejects the compact parameter-expansion form here.
+line_count=$((2 * LINES - cursor_y - 1))
+for (( i = 0; i < line_count; ++i )); do
+  padding+=$'\n'
+done
+builtin print -rnu $_z4h_tty_fd -- $padding
 builtin zle -I
 builtin zle -R
 -z4h-cursor-show

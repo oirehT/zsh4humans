@@ -189,7 +189,7 @@ Change the structure of `$Z4H` to this:
 ```text
 .
 ├── bin
-├── romkatv
+├── oirehT
 │   └── zsh4humans
 │       ├── fn
 │       │   ├── -z4h-clone
@@ -209,16 +209,16 @@ if [ -e "$Z4H"/zsh4humans/main.zsh ]; then
   return
 fi
 
-# git clone, curl or wget romkatv/zsh4humans
+# git clone, curl or wget oirehT/zsh4humans
 
 . "$Z4H"/zsh4humans/main.zsh
 ```
 
-`romkatv/zsh4humans` shouldn't be hard-coded but derived from `$Z4H_URL`.
+`oirehT/zsh4humans` shouldn't be hard-coded but derived from `$Z4H_URL`.
 
 It's not very important to update this file. The only case where it executes to the end after the
 initial installation is when `z4h` self-update gets aborted in the very short time window where
-`romkatv/zsh4humans` is renamed. So it's OK to never update the root `z4h.zsh`. But updating it
+`oirehT/zsh4humans` is renamed. So it's OK to never update the root `z4h.zsh`. But updating it
 is also OK (`cp` + `mv` should be easy enough).
 
 ---
@@ -671,12 +671,12 @@ preview in history.
 ---
 
 `run-help` has some issues with aliases. See
-https://github.com/romkatv/zsh4humans/issues/35#issuecomment-657515701.
+https://github.com/oirehT/zsh4humans/issues/35#issuecomment-657515701.
 
 ---
 
 Currently `find` for recursive completions is called with `-xdev`. This should be customizable.
-See https://github.com/romkatv/zsh4humans/issues/35#issuecomment-660477146.
+See https://github.com/oirehT/zsh4humans/issues/35#issuecomment-660477146.
 
 ---
 
@@ -691,7 +691,7 @@ both are available.
 ---
 
 Make `Alt+{Up,Left,Right}` work within `fzf`. See [this comment](
-  https://github.com/romkatv/zsh4humans/issues/35#issuecomment-674357739).
+  https://github.com/oirehT/zsh4humans/issues/35#issuecomment-674357739).
 
 ---
 
@@ -776,7 +776,7 @@ It should complete to `ls ..x `.
 ---
 
 The three minor issues with the integrated tmux that I've mentioned in
-https://github.com/romkatv/zsh4humans/issues/35#issuecomment-719639084 are here:
+https://github.com/oirehT/zsh4humans/issues/35#issuecomment-719639084 are here:
 
 ```text
 3a8eb6f08fb26ffdad79dae6f00c9a80ba30ecc0f0ee0a142322005f1d28710a */home/romka/notes/z4h-tmuw-issues.md
@@ -791,12 +791,12 @@ tmux.
 ---
 
 `kitty @ launch cat` doesn't work. See
-https://github.com/romkatv/zsh4humans/issues/35#issuecomment-720134760.
+https://github.com/oirehT/zsh4humans/issues/35#issuecomment-720134760.
 
 ---
 
 `new_os_window_with_cwd` doesn't work in Kitty. See
-https://github.com/romkatv/zsh4humans/issues/35#issuecomment-720134760.
+https://github.com/oirehT/zsh4humans/issues/35#issuecomment-720134760.
 
 ---
 
@@ -1008,7 +1008,7 @@ Run recovery code from `z4h.zsh` on `precmd` to lower startup lag (perhaps by de
 ---
 
 When using `su blah -` with the source and the target users both having z4h with integrated tmux,
-screen gets cleared unnecessarily. See https://github.com/romkatv/zsh4humans/issues/159. This can
+screen gets cleared unnecessarily. See https://github.com/oirehT/zsh4humans/issues/159. This can
 be fixed by creating world-writable directory `/tmp/z4h-tty` with world-writabable files in it.
 The names of the files would be derived from `$TTY` of tmux (both integrated and real) and the
 content would have `$TTY`, `$_Z4H_TMUX`, etc. Note that `$_Z4H_TMUX_CMD` may be unaccessible, so

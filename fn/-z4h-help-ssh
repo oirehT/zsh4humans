@@ -13,7 +13,7 @@ Here's what %F{2}z4h%f %Bssh%b does in more detail:
   1. Archives Zsh config files on the local host and sends them to the
      remote host.
   2. Extracts Zsh config files on the remote host.
-  3. Sources %U.zshenv%u with Z4H_BOOTSRAPING=%F{3}'1'%f, which starts the usual
+  3. Sources %U.zshenv%u with Z4H_BOOTSTRAPPING=%F{3}'1'%f, which starts the usual
      %Bzsh4humans%b bootstrap process.
 
 The first login to a remote host may take some time. After that it's

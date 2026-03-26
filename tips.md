@@ -214,7 +214,7 @@ When you connect to a remote host over SSH, your local Zsh for Humans
 environment can be teleported over to it. The first login to a remote host may
 take some time. After that it's as fast as normal `ssh`.
 
-SSH teleportation can be enable per host. By default it's disabled for all
+SSH teleportation can be enabled per host. By default it's disabled for all
 hosts. You can use either a blacklist approach:
 
 ```zsh
@@ -452,7 +452,7 @@ Usually this shouldn't be necessary because SSH teleportation automatically
 updates Zsh for Humans on the remote host if your local rc files require a newer
 version than what's available there. When a new feature is added to Zsh for
 Humans (a function, an alias, a zstyle, etc.), [version](
-  https://github.com/romkatv/zsh4humans/blob/v5/version) gets bumped. When
+  https://github.com/oirehT/zsh4humans/blob/v5/version) gets bumped. When
 teleporting, the version number of the local Zsh for Humans installation is sent
 over to the remote (it's the first part of `$Z4H_SSH`) and the remote is updated
 if its version is lower. This ensures that your rc files are compatible with
@@ -551,7 +551,7 @@ zstyle ':completion:*:(ssh|scp|rdp):*:hosts' hosts
 ## fzf
 
 Familiarize yourself with [fzf query syntax](
-  https://github.com/romkatv/zsh4humans#interactive-search-with-fzf).
+  https://github.com/oirehT/zsh4humans#interactive-search-with-fzf).
 
 The highlight color can be changed (from the default poisonous pink) with the
 following option:

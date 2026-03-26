@@ -308,7 +308,7 @@ function -z4h-cmd-init() {
               sock+=-$TERM$sock_suf
               if [[ -e $Z4H/tmux/stamp ]]; then
                 # Append a unique per-installation number to the socket path to work
-                # around a bug in tmux. See https://github.com/romkatv/zsh4humans/issues/71.
+                # around a bug in tmux. See https://github.com/oirehT/zsh4humans/issues/71.
                 local stamp
                 IFS= read -r stamp <$Z4H/tmux/stamp || return
                 sock+=-${stamp%%.*}

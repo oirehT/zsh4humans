@@ -18,7 +18,9 @@ local -a stat
 [[ -w "${1:h}" ]] || return
 
 local t
-builtin strftime -s t '%Y%m%d%H%M.%S' $((stat + 1))
+# main.zsh loads zsh/datetime before this helper is used, so plain strftime is
+# sufficient here and keeps zsh's noexec syntax checks working.
+strftime -s t '%Y%m%d%H%M.%S' $((stat + 1))
 
 local tmp="$1".tmp."${sysparams[pid]}".zwc
 {
