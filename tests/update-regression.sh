@@ -73,8 +73,11 @@ snapshot_repo=$tmp_dir/snapshot-repo
 snapshot_home=$tmp_dir/snapshot-home
 snapshot_base=$tmp_dir/snapshot-base
 snapshot_refresh=$tmp_dir/snapshot-refresh
+snapshot_fake_bin=$tmp_dir/snapshot-bin
+snapshot_pwd_home=$tmp_dir/snapshot-pwd-home
 
-mkdir -p -- "$snapshot_repo" "$snapshot_home" "$snapshot_base" "$snapshot_refresh"
+mkdir -p -- "$snapshot_repo" "$snapshot_home" "$snapshot_base" "$snapshot_refresh" "$snapshot_fake_bin" \
+  "$snapshot_pwd_home"
 cp -p -- "$repo_dir/update" "$snapshot_repo/update"
 cp -p -- "$base_dir/.zshenv" "$snapshot_repo/.zshenv"
 cp -p -- "$base_dir/.zshrc" "$snapshot_repo/.zshrc"
@@ -100,6 +103,48 @@ HOME=$snapshot_home Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$snapshot_base \
 grep -q "z4h source ~/.zshrc.local" "$snapshot_home/.zshrc"
 grep -q "alias snap='printf snapshot\\\\n'" "$snapshot_home/.zshrc.local"
 grep -q "snapshot refresh marker" "$snapshot_repo/update"
+
+# The full update path replaces the current shell with `z4h update`. That
+# shell should stay in the caller's working directory instead of unexpectedly
+# landing in the upgrade bundle directory.
+cat >"$snapshot_fake_bin/zsh" <<EOF
+#!/bin/sh
+pwd >"$tmp_dir/snapshot-pwd.out"
+exit 0
+EOF
+chmod +x "$snapshot_fake_bin/zsh"
+
+(
+  cd -- "$snapshot_pwd_home"
+  HOME=$snapshot_home PATH="$snapshot_fake_bin:$PATH" Z4H_UPDATE_BASE_DIR=$snapshot_base \
+    Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh "$snapshot_repo/update" >/dev/null 2>&1
+)
+
+[ "$(cat "$tmp_dir/snapshot-pwd.out")" = "$snapshot_pwd_home" ]
+
+# Repeated updates in the same second must not reuse the same backup directory,
+# or later runs can overwrite the earlier safety copy.
+cat >"$snapshot_fake_bin/date" <<'EOF'
+#!/bin/sh
+printf '%s\n' '20260326-120000'
+EOF
+chmod +x "$snapshot_fake_bin/date"
+
+backup_collision_home=$tmp_dir/backup-collision-home
+backup_collision_base=$tmp_dir/backup-collision-base
+mkdir -p -- "$backup_collision_home" "$backup_collision_base"
+cp -p -- "$base_dir/.zshenv" "$backup_collision_home/.zshenv"
+cp -p -- "$base_dir/.zshrc" "$backup_collision_home/.zshrc"
+cp -p -- "$base_dir/.zshenv" "$backup_collision_base/.zshenv"
+cp -p -- "$base_dir/.zshrc" "$backup_collision_base/.zshrc"
+
+HOME=$backup_collision_home PATH="$snapshot_fake_bin:$PATH" Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$backup_collision_base \
+  Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh "$snapshot_repo/update" >/dev/null
+HOME=$backup_collision_home PATH="$snapshot_fake_bin:$PATH" Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$backup_collision_base \
+  Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh "$snapshot_repo/update" >/dev/null
+
+[ -d "$backup_collision_home/zsh-backup/update-20260326-120000" ]
+[ -d "$backup_collision_home/zsh-backup/update-20260326-120000.1" ]
 grep -q "alias gs='git status -sb'" "$home_dir/.zshrc.local"
 
 # Simulate a previously broken run that moved the hook block into ~/.zshrc.local

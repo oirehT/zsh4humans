@@ -12,7 +12,6 @@ fi
 _z4h_update_repo_dir="${0%/*}"
 '[' "$_z4h_update_repo_dir" '=' "$0" ']' && _z4h_update_repo_dir='.'
 _z4h_update_repo_dir="$('cd' -- "$_z4h_update_repo_dir" && 'pwd')" || 'exit'
-'cd' -- "$_z4h_update_repo_dir" || 'exit'
 
 _z4h_update_repo_marker='.z4h-managed-repo'
 _z4h_update_repo_mode=''
@@ -85,8 +84,8 @@ _z4h_update_cleanup() {
 # Refuse to pull over tracked edits in a real checkout. Managed upgrade bundles
 # are refreshed into temporary files instead, so they don't have tracked state.
 if '[' "$_z4h_update_repo_mode" '=' 'git' '-a' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
-  if ! 'command' 'git' 'diff' '--quiet' '--no-ext-diff' '--exit-code' || \
-     ! 'command' 'git' 'diff' '--cached' '--quiet' '--no-ext-diff' '--exit-code'; then
+  if ! 'command' 'git' '-C' "$_z4h_update_repo_dir" 'diff' '--quiet' '--no-ext-diff' '--exit-code' || \
+     ! 'command' 'git' '-C' "$_z4h_update_repo_dir" 'diff' '--cached' '--quiet' '--no-ext-diff' '--exit-code'; then
     >&2 'printf' '\033[33mz4h\033[0m: repository has local tracked changes; commit or stash them first\n'
     'exit' '1'
   fi
@@ -150,13 +149,20 @@ _z4h_update_prepare_snapshot_refresh() {
 
 if '[' "$_z4h_update_repo_mode" '=' 'git' '-a' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
   >&2 'printf' '\033[33mz4h\033[0m: pulling latest repository changes\n'
-  'command' 'git' 'pull' '--ff-only' || 'exit'
+  'command' 'git' '-C' "$_z4h_update_repo_dir" 'pull' '--ff-only' || 'exit'
 elif '[' "$_z4h_update_repo_mode" '=' 'snapshot' ']'; then
   _z4h_update_prepare_snapshot_refresh
 fi
 
 _z4h_update_timestamp="$('command' 'date' '+%Y%m%d-%H%M%S')" || 'exit'
 _z4h_update_backup_dir="${Z4H_UPDATE_BACKUP_ROOT:-$_z4h_update_home/zsh-backup}/update-$_z4h_update_timestamp"
+if '[' '-e' "$_z4h_update_backup_dir" ']'; then
+  _z4h_update_backup_suffix='1'
+  while '[' '-e' "$_z4h_update_backup_dir.$_z4h_update_backup_suffix" ']'; do
+    _z4h_update_backup_suffix="$((_z4h_update_backup_suffix+1))"
+  done
+  _z4h_update_backup_dir="$_z4h_update_backup_dir.$_z4h_update_backup_suffix"
+fi
 'command' 'mkdir' '-p' '--' "$_z4h_update_backup_dir" || 'exit'
 _z4h_update_local_backed_up=''
 _z4h_update_local_comment='# Load personal customizations that should survive template refreshes.'
