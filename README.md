@@ -272,34 +272,19 @@ create these files** unless you are absolutely certain you need them.
 
 ## Updating
 
-If you want to refresh the shipped startup files as well as the installed
-runtime, use the full updater.
+There are two ways to update Zsh for Humans.
 
-Run `z4h upgrade` from any directory. It reuses the recorded upgrade source
-and performs the same full workflow as `./update`.
-
-If you are updating from a checkout of this repository, you can run `./update`
-directly instead.
-
-The full updater:
-- pulls or refreshes the recorded upgrade source
-- merges your existing edits from `~/.zshenv` and `~/.zshrc` onto the fresh
-  shipped templates
-- preserves personal additions appended to the end of `~/.zshrc` by moving
-  them into `~/.zshrc.local`
-- keeps backups under `~/zsh-backup/update-*`
-- finishes by running `z4h update`
-
-Run `z4h update` when you only want to refresh the installed Zsh for Humans
-runtime in `$Z4H`. It does not modify `~/.zshenv`, `~/.zshrc`, or
+`z4h update` refreshes only the installed runtime in `$Z4H`. Use it when you
+want new z4h code, plugins, and runtime dependencies without touching your
+startup files. It does not modify `~/.zshenv`, `~/.zshrc`, or
 `~/.zshrc.local`.
 
-Fresh installs are ready too. If the initial install is launched from a
-checkout with `./install`, that checkout path is recorded during installation.
-If the initial install is launched through the GitHub installer, it seeds a
-small managed upgrade bundle under your cache directory and records that path
-instead. In both cases, `z4h upgrade` is ready to use immediately from your
-home directory.
+`z4h upgrade` is the full updater. It refreshes the recorded upgrade source
+and then updates both the runtime and the shipped startup files. It merges your
+existing edits from `~/.zshenv` and `~/.zshrc` onto the fresh templates,
+preserves personal additions appended to the end of `~/.zshrc` by moving them
+into `~/.zshrc.local`, keeps backups under `~/zsh-backup/update-*`, and then
+finishes by running `z4h update`.
 
 ## Uninstalling
 
