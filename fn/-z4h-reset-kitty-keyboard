@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+#
+# Disable kitty keyboard protocol before each prompt. This recovers from
+# full-screen or TUI applications that enabled CSI-u keyboard reporting and
+# then crashed before restoring the terminal keyboard mode on exit.
+
+emulate -L zsh -o no_multi_byte
+
+[[ $TERM != (dumb|linux) ]] || return
+
+# Route the sequence through tmux passthrough when available so nested shells
+# can restore the outer terminal state as well.
+-z4h-tmux-bypass '\e[<u'
