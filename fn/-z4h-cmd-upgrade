@@ -1,0 +1,59 @@
+#!/usr/bin/env zsh
+
+eval "$_z4h_opt"
+-z4h-check-core-params || return
+
+if (( ARGC )); then
+  print -Pru2 -- '%F{3}z4h%f: unexpected %F{1}upgrade%f argument'
+  return '_z4h_err()'
+fi
+
+if (( _z4h_dangerous_root )); then
+  print -Pru2 -- "%F{3}z4h%f: refusing to %Bupgrade%b as %F{1}root%f"
+  return 1
+fi
+
+local repo=${Z4H_REPO-}
+local repo_file=$ZDOTDIR/.z4h-repo
+
+if [[ -z $repo && -r $repo_file ]]; then
+  IFS= read -r repo <$repo_file || repo=
+fi
+
+# First-time users may invoke `z4h upgrade` from inside their checkout before
+# `./update` has had a chance to persist its location. In that case, discover
+# the repository by walking up from the current working directory.
+if [[ -z $repo ]]; then
+  local probe=$PWD
+  while true; do
+    if [[ -e $probe/update && -d $probe/.git ]]; then
+      repo=$probe
+      break
+    fi
+    [[ $probe == / ]] && break
+    probe=${probe:h}
+  done
+fi
+
+if [[ -z $repo ]]; then
+  print -Pru2 -- '%F{3}z4h%f: cannot locate the %Bzsh4humans%b checkout for %Bupgrade%b'
+  print -Pru2 -- ''
+  print -Pru2 -- 'Run %F{2}./update%f once from your checkout, or export %BZ4H_REPO%b to it.'
+  return 1
+fi
+
+local script=$repo/update
+if [[ ! -e $script ]]; then
+  print -Pru2 -- "%F{3}z4h%f: missing %F{1}${script//\%/%%}%f"
+  return 1
+fi
+if [[ ! -x $script ]]; then
+  print -Pru2 -- "%F{3}z4h%f: %F{1}${script//\%/%%}%f is not executable"
+  return 1
+fi
+if [[ ! -d $repo/.git ]]; then
+  print -Pru2 -- "%F{3}z4h%f: %F{1}${repo//\%/%%}%f is not a git checkout"
+  return 1
+fi
+
+exec env ZDOTDIR=$ZDOTDIR Z4H=$Z4H $script

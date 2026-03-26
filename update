@@ -28,6 +28,7 @@ _z4h_update_home="${HOME-}"
 
 _z4h_update_zdotdir="${ZDOTDIR:-$_z4h_update_home}"
 'command' 'mkdir' '-p' '--' "$_z4h_update_zdotdir" || 'exit'
+_z4h_update_repo_file="$_z4h_update_zdotdir/.z4h-repo"
 
 _z4h_update_tmp="$('command' 'mktemp' '-d' "${TMPDIR:-/tmp}/z4h-update.XXXXXXXXXX")" || 'exit'
 
@@ -248,6 +249,10 @@ _z4h_update_merge_file "$_z4h_update_zdotdir/.zshenv" "$_z4h_update_base_dir/.zs
 _z4h_update_merge_file "$_z4h_update_zdotdir/.zshrc" "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" \
   "$_z4h_update_zshrc_variant" '.zshrc'
 _z4h_update_normalize_local_hook
+
+# Record the checkout that owns this updater so `z4h upgrade` can reuse it
+# later from any directory without guessing which repository to pull.
+'printf' '%s\n' "$_z4h_update_repo_dir" >"$_z4h_update_repo_file" || 'exit'
 
 >&2 'printf' '\033[33mz4h\033[0m: backups saved in \033[4m%s\033[0m\n' "$_z4h_update_backup_dir"
 

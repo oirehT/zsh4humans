@@ -270,6 +270,10 @@ It pulls the checkout forward, merges your existing edits from `~/.zshenv` and
 `~/.zshrc` onto the freshly pulled templates, keeps backups under
 `~/zsh-backup/update-*`, and then runs `z4h update`.
 
+After the first successful `./update`, you can run `z4h upgrade` from any
+directory. It reuses the recorded checkout path and invokes the same full
+workflow as `./update`.
+
 ## Uninstalling
 
 1. Delete or replace `~/.zshenv` and `~/.zshrc`. If you had these files prior to the installation of
