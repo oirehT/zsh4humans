@@ -91,6 +91,10 @@ _z4h_update_extract_zshrc_tail() {
       mode = "managed"
       local_hook = "z4h source ~/.zshrc.local"
       shared_hook = "z4h source \"$Z4H/zsh4humans/.zshrc.shared\""
+      split_after = shared_hook
+    }
+    $0 == local_hook {
+      split_after = local_hook
     }
     {
       if (mode == "managed") {
@@ -99,12 +103,7 @@ _z4h_update_extract_zshrc_tail() {
         print > tail
       }
 
-      if ($0 == local_hook) {
-        mode = "tail"
-        next
-      }
-
-      if ($0 == shared_hook && mode == "managed") {
+      if ($0 == split_after && mode == "managed") {
         mode = "tail"
       }
     }

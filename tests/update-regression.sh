@@ -55,3 +55,14 @@ grep -q "export GOPATH=\$HOME/go" "$home_dir/.zshenv"
 grep -q "zstyle ':z4h:direnv'         enable 'yes'" "$home_dir/.zshrc"
 grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc"
 grep -q "alias ll='ls -lah'" "$home_dir/.zshrc.local"
+
+# A second run must keep the hook in ~/.zshrc instead of re-migrating it into
+# ~/.zshrc.local on every update.
+printf '\n# second user customization\nalias gs='\''git status -sb'\''\n' >>"$home_dir/.zshrc"
+
+HOME=$home_dir Z4H_UPDATE_SKIP_GIT=1 Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$base_dir \
+  "$test_repo/update"
+
+grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc"
+! grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc.local"
+grep -q "alias gs='git status -sb'" "$home_dir/.zshrc.local"
