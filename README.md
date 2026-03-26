@@ -265,6 +265,11 @@ create these files** unless you are absolutely certain you need them.
 
 Run `z4h update` to update Zsh for Humans. There is no update mechanism for `~/.zshrc` itself.
 
+If you are updating from a checkout of this repository, run `./update` instead.
+It pulls the checkout forward, merges your existing edits from `~/.zshenv` and
+`~/.zshrc` onto the freshly pulled templates, keeps backups under
+`~/zsh-backup/update-*`, and then runs `z4h update`.
+
 ## Uninstalling
 
 1. Delete or replace `~/.zshenv` and `~/.zshrc`. If you had these files prior to the installation of

@@ -1,0 +1,215 @@
+#!/bin/sh
+
+if '[' '-n' "${ZSH_VERSION-}" ']'; then
+  'emulate' 'sh' '-o' 'err_exit' '-o' 'no_unset'
+else
+  'set' '-eu'
+fi
+
+# Resolve the repository root from the script location so the updater can be
+# launched from anywhere without relying on the caller's current directory.
+_z4h_update_repo_dir="${0%/*}"
+'[' "$_z4h_update_repo_dir" '=' "$0" ']' && _z4h_update_repo_dir='.'
+_z4h_update_repo_dir="$('cd' -- "$_z4h_update_repo_dir" && 'pwd')" || 'exit'
+'cd' -- "$_z4h_update_repo_dir" || 'exit'
+
+for _z4h_update_cmd in 'git' 'zsh' 'mktemp' 'cp' 'mv' 'mkdir' 'date' 'grep' 'awk' 'uname'; do
+  if ! 'command' -v "$_z4h_update_cmd" >'/dev/null' 2>&1; then
+    >&2 'printf' '\033[33mz4h\033[0m: missing required command: \033[31m%s\033[0m\n' "$_z4h_update_cmd"
+    'exit' '1'
+  fi
+done
+
+_z4h_update_home="${HOME-}"
+'[' '-n' "$_z4h_update_home" '-a' '-d' "$_z4h_update_home" ']' || {
+  >&2 'printf' '\033[33mz4h\033[0m: \033[1m$HOME\033[0m is not a directory\n'
+  'exit' '1'
+}
+
+_z4h_update_zdotdir="${ZDOTDIR:-$_z4h_update_home}"
+'command' 'mkdir' '-p' '--' "$_z4h_update_zdotdir" || 'exit'
+
+_z4h_update_tmp="$('command' 'mktemp' '-d' "${TMPDIR:-/tmp}/z4h-update.XXXXXXXXXX")" || 'exit'
+
+_z4h_update_cleanup() {
+  'trap' '-' 'INT' 'TERM' 'EXIT'
+  'command' 'rm' '-rf' '--' "$_z4h_update_tmp"
+}
+
+'trap' '_z4h_update_cleanup' 'INT' 'TERM' 'EXIT'
+
+# Refuse to pull over tracked edits in the checkout. Untracked files are fine;
+# the goal is to avoid surprising merges into the shipped templates.
+if '[' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
+  if ! 'command' 'git' 'diff' '--quiet' '--no-ext-diff' '--exit-code' || \
+     ! 'command' 'git' 'diff' '--cached' '--quiet' '--no-ext-diff' '--exit-code'; then
+    >&2 'printf' '\033[33mz4h\033[0m: repository has local tracked changes; commit or stash them first\n'
+    'exit' '1'
+  fi
+fi
+
+_z4h_update_zshrc_variant='.zshrc'
+if '[' '-r' "$_z4h_update_zdotdir/.zshrc" ']' &&
+   'command' 'grep' '-q' "zstyle ':z4h:bindkey' keyboard  'mac'" "$_z4h_update_zdotdir/.zshrc"; then
+  _z4h_update_zshrc_variant='.zshrc.mac'
+elif '[' "$(uname -s 2>/dev/null)" '=' 'Darwin' ']'; then
+  _z4h_update_zshrc_variant='.zshrc.mac'
+fi
+
+if '[' '-n' "${Z4H_UPDATE_BASE_DIR-}" ']'; then
+  _z4h_update_base_dir="${Z4H_UPDATE_BASE_DIR%/}"
+else
+  _z4h_update_base_dir="$_z4h_update_tmp/base"
+  'command' 'mkdir' '-p' '--' "$_z4h_update_base_dir" || 'exit'
+  'command' 'cp' '-p' '--' .zshenv "$_z4h_update_base_dir/.zshenv" || 'exit'
+  'command' 'cp' '-p' '--' "$_z4h_update_zshrc_variant" "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" || 'exit'
+fi
+
+if '[' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
+  >&2 'printf' '\033[33mz4h\033[0m: pulling latest repository changes\n'
+  'command' 'git' 'pull' '--ff-only' || 'exit'
+fi
+
+_z4h_update_timestamp="$('command' 'date' '+%Y%m%d-%H%M%S')" || 'exit'
+_z4h_update_backup_dir="${Z4H_UPDATE_BACKUP_ROOT:-$_z4h_update_home/zsh-backup}/update-$_z4h_update_timestamp"
+'command' 'mkdir' '-p' '--' "$_z4h_update_backup_dir" || 'exit'
+_z4h_update_local_backed_up=''
+
+_z4h_update_extract_zshrc_tail() {
+  _z4h_update_current="$1"
+  _z4h_update_managed="$2"
+  _z4h_update_tail="$3"
+
+  : >"$_z4h_update_managed" || 'exit'
+  : >"$_z4h_update_tail" || 'exit'
+
+  # Existing installations usually append personal customizations after the
+  # final shipped line. Move that tail into ~/.zshrc.local before merging so it
+  # survives template refreshes without conflicting with new footer content.
+  'command' 'awk' '
+    BEGIN {
+      mode = "managed"
+      local_hook = "z4h source ~/.zshrc.local"
+      shared_hook = "z4h source \"$Z4H/zsh4humans/.zshrc.shared\""
+    }
+    {
+      if (mode == "managed") {
+        print > managed
+      } else {
+        print > tail
+      }
+
+      if ($0 == local_hook) {
+        mode = "tail"
+        next
+      }
+
+      if ($0 == shared_hook && mode == "managed") {
+        mode = "tail"
+      }
+    }
+  ' managed="$_z4h_update_managed" tail="$_z4h_update_tail" "$_z4h_update_current" || 'exit'
+}
+
+_z4h_update_migrate_zshrc_tail() {
+  _z4h_update_tail="$1"
+  _z4h_update_local="$_z4h_update_zdotdir/.zshrc.local"
+
+  '[' '-s' "$_z4h_update_tail" ']' || 'return'
+
+  if '[' '-e' "$_z4h_update_local" '-a' -z "$_z4h_update_local_backed_up" ']'; then
+    'command' 'cp' '-p' '--' "$_z4h_update_local" "$_z4h_update_backup_dir/.zshrc.local" || 'exit'
+    _z4h_update_local_backed_up='1'
+  fi
+
+  {
+    if '[' '-e' "$_z4h_update_local" '-a' '-s' "$_z4h_update_local" ']'; then
+      'printf' '\n'
+    fi
+    'printf' '# Migrated from ~/.zshrc by ./update on %s\n' "$_z4h_update_timestamp"
+    'command' 'cat' '--' "$_z4h_update_tail"
+  } >>"$_z4h_update_local" || 'exit'
+}
+
+_z4h_update_merge_file() {
+  _z4h_update_target="$1"
+  _z4h_update_base="$2"
+  _z4h_update_fresh="$3"
+  _z4h_update_name="$4"
+  _z4h_update_tmp_file="$_z4h_update_tmp/${_z4h_update_name##*/}"
+  _z4h_update_source="$_z4h_update_target"
+
+  if '[' '-e' "$_z4h_update_target" ']'; then
+    'command' 'cp' '-p' '--' "$_z4h_update_target" "$_z4h_update_backup_dir/$_z4h_update_name" || 'exit'
+  fi
+
+  if '[' "$_z4h_update_name" '=' '.zshrc' '-a' '-e' "$_z4h_update_target" ']'; then
+    _z4h_update_source="$_z4h_update_tmp/.zshrc.managed"
+    _z4h_update_tail="$_z4h_update_tmp/.zshrc.tail"
+    _z4h_update_extract_zshrc_tail "$_z4h_update_target" "$_z4h_update_source" "$_z4h_update_tail"
+    _z4h_update_migrate_zshrc_tail "$_z4h_update_tail"
+  fi
+
+  'command' 'cp' '-p' '--' "$_z4h_update_fresh" "$_z4h_update_tmp_file" || 'exit'
+
+  # Apply user edits from the live file onto the freshly pulled template using
+  # the previous shipped template as the merge base. This preserves both
+  # appended custom blocks and in-place edits when they don't conflict.
+  if '[' '-e' "$_z4h_update_source" ']'; then
+    if 'command' 'git' 'merge-file' "$_z4h_update_tmp_file" "$_z4h_update_base" "$_z4h_update_source" \
+         >'/dev/null' 2>&1; then
+      :
+    else
+      _z4h_update_status="$?"
+      case "$_z4h_update_status" in
+        '1')
+          if '[' "$_z4h_update_name" '=' '.zshrc' ']'; then
+            'command' 'cp' '-p' '--' "$_z4h_update_fresh" "$_z4h_update_tmp_file" || 'exit'
+            if 'command' 'git' 'merge-file' '--union' "$_z4h_update_tmp_file" "$_z4h_update_base" \
+                 "$_z4h_update_source" >'/dev/null' 2>&1; then
+              >&2 'printf' '\033[33mz4h\033[0m: merged overlapping \033[4m%s\033[0m changes with union fallback\n' \
+                "$_z4h_update_target"
+            else
+              'command' 'cp' '-p' '--' "$_z4h_update_tmp_file" "$_z4h_update_backup_dir/$_z4h_update_name.conflicted" || 'exit'
+              >&2 'printf' '\033[33mz4h\033[0m: merge conflict while updating \033[4m%s\033[0m\n' "$_z4h_update_target"
+              >&2 'printf' '\033[33mz4h\033[0m: inspect \033[4m%s\033[0m and merge it manually\n' \
+                "$_z4h_update_backup_dir/$_z4h_update_name.conflicted"
+              'exit' '1'
+            fi
+          else
+            'command' 'cp' '-p' '--' "$_z4h_update_tmp_file" "$_z4h_update_backup_dir/$_z4h_update_name.conflicted" || 'exit'
+            >&2 'printf' '\033[33mz4h\033[0m: merge conflict while updating \033[4m%s\033[0m\n' "$_z4h_update_target"
+            >&2 'printf' '\033[33mz4h\033[0m: inspect \033[4m%s\033[0m and merge it manually\n' \
+              "$_z4h_update_backup_dir/$_z4h_update_name.conflicted"
+            'exit' '1'
+          fi
+        ;;
+        *)
+          >&2 'printf' '\033[33mz4h\033[0m: failed to merge \033[4m%s\033[0m\n' "$_z4h_update_target"
+          'exit' '1'
+        ;;
+      esac
+    fi
+  fi
+
+  'command' 'mv' '--' "$_z4h_update_tmp_file" "$_z4h_update_target" || 'exit'
+}
+
+>&2 'printf' '\033[33mz4h\033[0m: refreshing \033[4m%s/.zshenv\033[0m and \033[4m%s/.zshrc\033[0m\n' \
+  "$_z4h_update_zdotdir" "$_z4h_update_zdotdir"
+
+_z4h_update_merge_file "$_z4h_update_zdotdir/.zshenv" "$_z4h_update_base_dir/.zshenv" .zshenv '.zshenv'
+_z4h_update_merge_file "$_z4h_update_zdotdir/.zshrc" "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" \
+  "$_z4h_update_zshrc_variant" '.zshrc'
+
+>&2 'printf' '\033[33mz4h\033[0m: backups saved in \033[4m%s\033[0m\n' "$_z4h_update_backup_dir"
+
+if '[' "${Z4H_UPDATE_SKIP_Z4H-0}" '=' '1' ']'; then
+  '_z4h_update_cleanup'
+  'exit' '0'
+fi
+
+>&2 'printf' '\033[33mz4h\033[0m: running \033[32mz4h update\033[0m\n'
+
+'_z4h_update_cleanup'
+'exec' 'env' "ZDOTDIR=$_z4h_update_zdotdir" 'zsh' '-i' '-c' 'z4h update'
