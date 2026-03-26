@@ -17,7 +17,7 @@ if (( ARGC == 1 )); then
     upgrade)
       print -Pr -- "Usage: %F{2}z4h%f %Bupgrade%b"
       print -Pr -- ""
-      print -Pr -- "Run the checkout-owned %B./update%b workflow from anywhere."
+      print -Pr -- "Run the recorded full-upgrade workflow from anywhere."
     ;;
     init)
       print -Pr -- "Usage: %F{2}z4h%f %Binit%b"

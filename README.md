@@ -271,8 +271,15 @@ It pulls the checkout forward, merges your existing edits from `~/.zshenv` and
 `~/zsh-backup/update-*`, and then runs `z4h update`.
 
 After the first successful `./update`, you can run `z4h upgrade` from any
-directory. It reuses the recorded checkout path and invokes the same full
+directory. It reuses the recorded upgrade source and invokes the same full
 workflow as `./update`.
+
+Fresh installs are ready too. If the initial install is launched from a
+checkout with `./install`, that checkout path is recorded during installation.
+If the initial install is launched through the GitHub installer, it seeds a
+small managed upgrade bundle under your cache directory and records that path
+instead. In both cases, `z4h upgrade` is ready to use immediately from your
+home directory.
 
 ## Uninstalling
 

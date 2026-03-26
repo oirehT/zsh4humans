@@ -6,19 +6,62 @@ else
   'set' '-eu'
 fi
 
-# Resolve the repository root from the script location so the updater can be
-# launched from anywhere without relying on the caller's current directory.
+# Resolve the owning repository or managed upgrade bundle from the script
+# location so the updater can be launched from anywhere without relying on the
+# caller's current directory.
 _z4h_update_repo_dir="${0%/*}"
 '[' "$_z4h_update_repo_dir" '=' "$0" ']' && _z4h_update_repo_dir='.'
 _z4h_update_repo_dir="$('cd' -- "$_z4h_update_repo_dir" && 'pwd')" || 'exit'
 'cd' -- "$_z4h_update_repo_dir" || 'exit'
 
-for _z4h_update_cmd in 'git' 'zsh' 'mktemp' 'cp' 'mv' 'mkdir' 'date' 'grep' 'awk' 'uname'; do
+_z4h_update_repo_marker='.z4h-managed-repo'
+_z4h_update_repo_mode=''
+_z4h_update_repo_url="${Z4H_UPDATE_REPO_URL:-https://raw.githubusercontent.com/oirehT/zsh4humans/v5}"
+_z4h_update_fresh_dir="$_z4h_update_repo_dir"
+_z4h_update_fetch=''
+_z4h_update_merge_tool=''
+
+for _z4h_update_cmd in 'zsh' 'mktemp' 'cp' 'mv' 'mkdir' 'date' 'grep' 'awk' 'uname' 'chmod'; do
   if ! 'command' -v "$_z4h_update_cmd" >'/dev/null' 2>&1; then
     >&2 'printf' '\033[33mz4h\033[0m: missing required command: \033[31m%s\033[0m\n' "$_z4h_update_cmd"
     'exit' '1'
   fi
 done
+
+if '[' '-d' "$_z4h_update_repo_dir/.git" ']'; then
+  _z4h_update_repo_mode='git'
+elif '[' '-e' "$_z4h_update_repo_dir/update" '-a' '-e' "$_z4h_update_repo_dir/.zshenv" \
+      '-a' '-e' "$_z4h_update_repo_dir/.zshrc" '-a' '-e' "$_z4h_update_repo_dir/.zshrc.mac" ']'; then
+  _z4h_update_repo_mode='snapshot'
+else
+  >&2 'printf' '\033[33mz4h\033[0m: unsupported upgrade source: \033[31m%s\033[0m\n' "$_z4h_update_repo_dir"
+  'exit' '1'
+fi
+
+if 'command' -v 'git' >'/dev/null' 2>&1; then
+  _z4h_update_merge_tool='git'
+elif 'command' -v 'diff3' >'/dev/null' 2>&1; then
+  _z4h_update_merge_tool='diff3'
+else
+  >&2 'printf' '\033[33mz4h\033[0m: please install \033[32mgit\033[0m or \033[32mdiff3\033[0m\n'
+  'exit' '1'
+fi
+
+if '[' "$_z4h_update_repo_mode" '=' 'git' ']' && ! 'command' -v 'git' >'/dev/null' 2>&1; then
+  >&2 'printf' '\033[33mz4h\033[0m: missing required command: \033[31mgit\033[0m\n'
+  'exit' '1'
+fi
+
+if '[' "$_z4h_update_repo_mode" '=' 'snapshot' '-a' -z "${Z4H_UPDATE_REFRESH_DIR-}" ']'; then
+  if 'command' -v 'curl' >'/dev/null' 2>&1; then
+    _z4h_update_fetch='command curl -fsSLo'
+  elif 'command' -v 'wget' >'/dev/null' 2>&1; then
+    _z4h_update_fetch='command wget -O'
+  else
+    >&2 'printf' '\033[33mz4h\033[0m: please install \033[32mcurl\033[0m or \033[32mwget\033[0m\n'
+    'exit' '1'
+  fi
+fi
 
 _z4h_update_home="${HOME-}"
 '[' '-n' "$_z4h_update_home" '-a' '-d' "$_z4h_update_home" ']' || {
@@ -39,9 +82,9 @@ _z4h_update_cleanup() {
 
 'trap' '_z4h_update_cleanup' 'INT' 'TERM' 'EXIT'
 
-# Refuse to pull over tracked edits in the checkout. Untracked files are fine;
-# the goal is to avoid surprising merges into the shipped templates.
-if '[' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
+# Refuse to pull over tracked edits in a real checkout. Managed upgrade bundles
+# are refreshed into temporary files instead, so they don't have tracked state.
+if '[' "$_z4h_update_repo_mode" '=' 'git' '-a' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
   if ! 'command' 'git' 'diff' '--quiet' '--no-ext-diff' '--exit-code' || \
      ! 'command' 'git' 'diff' '--cached' '--quiet' '--no-ext-diff' '--exit-code'; then
     >&2 'printf' '\033[33mz4h\033[0m: repository has local tracked changes; commit or stash them first\n'
@@ -62,13 +105,54 @@ if '[' '-n' "${Z4H_UPDATE_BASE_DIR-}" ']'; then
 else
   _z4h_update_base_dir="$_z4h_update_tmp/base"
   'command' 'mkdir' '-p' '--' "$_z4h_update_base_dir" || 'exit'
-  'command' 'cp' '-p' '--' .zshenv "$_z4h_update_base_dir/.zshenv" || 'exit'
-  'command' 'cp' '-p' '--' "$_z4h_update_zshrc_variant" "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" || 'exit'
+  'command' 'cp' '-p' '--' "$_z4h_update_repo_dir/.zshenv" "$_z4h_update_base_dir/.zshenv" || 'exit'
+  'command' 'cp' '-p' '--' "$_z4h_update_repo_dir/$_z4h_update_zshrc_variant" \
+    "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" || 'exit'
 fi
 
-if '[' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
+_z4h_update_fetch_snapshot_file() {
+  _z4h_update_remote="$1"
+  _z4h_update_target="$2"
+
+  if ! _z4h_update_err="$($_z4h_update_fetch "$_z4h_update_target" '--' "$_z4h_update_repo_url/$_z4h_update_remote" 2>&1)"; then
+    >&2 'printf' "%s\n" "$_z4h_update_err"
+    >&2 'printf' '\033[33mz4h\033[0m: failed to download \033[31m%s\033[0m\n' "$_z4h_update_repo_url/$_z4h_update_remote"
+    'exit' '1'
+  fi
+}
+
+_z4h_update_prepare_snapshot_refresh() {
+  _z4h_update_fresh_dir="$_z4h_update_tmp/fresh"
+  'command' 'mkdir' '-p' '--' "$_z4h_update_fresh_dir" || 'exit'
+
+  if '[' '-n' "${Z4H_UPDATE_REFRESH_DIR-}" ']'; then
+    _z4h_update_refresh_dir="${Z4H_UPDATE_REFRESH_DIR%/}"
+    for _z4h_update_file in 'update' '.zshenv' '.zshrc' '.zshrc.mac'; do
+      if '[' '!' '-e' "$_z4h_update_refresh_dir/$_z4h_update_file" ']'; then
+        >&2 'printf' '\033[33mz4h\033[0m: missing \033[31m%s\033[0m in \033[4m%s\033[0m\n' \
+          "$_z4h_update_file" "$_z4h_update_refresh_dir"
+        'exit' '1'
+      fi
+      'command' 'cp' '-p' '--' "$_z4h_update_refresh_dir/$_z4h_update_file" \
+        "$_z4h_update_fresh_dir/$_z4h_update_file" || 'exit'
+    done
+  else
+    >&2 'printf' '\033[33mz4h\033[0m: refreshing managed upgrade bundle from \033[1mgithub.com/oirehT/zsh4humans\033[0m\n'
+    _z4h_update_fetch_snapshot_file 'update' "$_z4h_update_fresh_dir/update"
+    _z4h_update_fetch_snapshot_file '.zshenv' "$_z4h_update_fresh_dir/.zshenv"
+    _z4h_update_fetch_snapshot_file '.zshrc' "$_z4h_update_fresh_dir/.zshrc"
+    _z4h_update_fetch_snapshot_file '.zshrc.mac' "$_z4h_update_fresh_dir/.zshrc.mac"
+  fi
+
+  'command' 'chmod' '+x' '--' "$_z4h_update_fresh_dir/update" || 'exit'
+  'printf' '%s\n' 'snapshot' >"$_z4h_update_fresh_dir/$_z4h_update_repo_marker" || 'exit'
+}
+
+if '[' "$_z4h_update_repo_mode" '=' 'git' '-a' "${Z4H_UPDATE_SKIP_GIT-0}" '!=' '1' ']'; then
   >&2 'printf' '\033[33mz4h\033[0m: pulling latest repository changes\n'
   'command' 'git' 'pull' '--ff-only' || 'exit'
+elif '[' "$_z4h_update_repo_mode" '=' 'snapshot' ']'; then
+  _z4h_update_prepare_snapshot_refresh
 fi
 
 _z4h_update_timestamp="$('command' 'date' '+%Y%m%d-%H%M%S')" || 'exit'
@@ -119,7 +203,7 @@ _z4h_update_migrate_zshrc_tail() {
   _z4h_update_local="$_z4h_update_zdotdir/.zshrc.local"
   _z4h_update_tail_clean="$_z4h_update_tmp/.zshrc.tail.clean"
 
-  '[' '-s' "$_z4h_update_tail" ']' || 'return'
+  '[' '-s' "$_z4h_update_tail" ']' || return 0
 
   # Drop the managed hook block if it was previously migrated by an older,
   # buggy updater run. Only user content after that block belongs in
@@ -134,7 +218,7 @@ _z4h_update_migrate_zshrc_tail() {
     { print }
   ' "$_z4h_update_tail" >"$_z4h_update_tail_clean" || 'exit'
 
-  '[' '-s' "$_z4h_update_tail_clean" ']' || 'return'
+  '[' '-s' "$_z4h_update_tail_clean" ']' || return 0
 
   if '[' '-e' "$_z4h_update_local" '-a' -z "$_z4h_update_local_backed_up" ']'; then
     'command' 'cp' '-p' '--' "$_z4h_update_local" "$_z4h_update_backup_dir/.zshrc.local" || 'exit'
@@ -178,6 +262,53 @@ _z4h_update_normalize_local_hook() {
   fi
 }
 
+_z4h_update_merge_three_way() {
+  _z4h_update_merged="$1"
+  _z4h_update_base="$2"
+  _z4h_update_source="$3"
+  _z4h_update_merge_tmp="$4"
+
+  case "$_z4h_update_merge_tool" in
+    'git')
+      'command' 'git' 'merge-file' "$_z4h_update_merged" "$_z4h_update_base" "$_z4h_update_source" \
+        >'/dev/null' 2>&1
+      return "$?"
+    ;;
+    'diff3')
+      if 'command' 'diff3' '-m' "$_z4h_update_merged" "$_z4h_update_base" "$_z4h_update_source" \
+           >"$_z4h_update_merge_tmp" 2>'/dev/null'; then
+        'command' 'mv' '--' "$_z4h_update_merge_tmp" "$_z4h_update_merged" || 'exit'
+        return 0
+      fi
+      _z4h_update_status="$?"
+      case "$_z4h_update_status" in
+        '1')
+          'command' 'mv' '--' "$_z4h_update_merge_tmp" "$_z4h_update_merged" || 'exit'
+          return 1
+        ;;
+        *)
+          return "$_z4h_update_status"
+        ;;
+      esac
+    ;;
+  esac
+}
+
+_z4h_update_sync_snapshot_repo() {
+  '[' "$_z4h_update_repo_mode" '=' 'snapshot' ']' || return 0
+  '[' "$_z4h_update_fresh_dir" '=' "$_z4h_update_repo_dir" ']' && return 0
+
+  # Keep the managed bundle small and explicit: it only needs the updater plus
+  # pristine templates. The runtime itself is still refreshed by `z4h update`.
+  for _z4h_update_file in 'update' '.zshenv' '.zshrc' '.zshrc.mac'; do
+    'command' 'cp' '-p' '--' "$_z4h_update_fresh_dir/$_z4h_update_file" \
+      "$_z4h_update_repo_dir/$_z4h_update_file" || 'exit'
+  done
+
+  'command' 'chmod' '+x' '--' "$_z4h_update_repo_dir/update" || 'exit'
+  'printf' '%s\n' 'snapshot' >"$_z4h_update_repo_dir/$_z4h_update_repo_marker" || 'exit'
+}
+
 _z4h_update_merge_file() {
   _z4h_update_target="$1"
   _z4h_update_base="$2"
@@ -185,6 +316,7 @@ _z4h_update_merge_file() {
   _z4h_update_name="$4"
   _z4h_update_tmp_file="$_z4h_update_tmp/${_z4h_update_name##*/}"
   _z4h_update_source="$_z4h_update_target"
+  _z4h_update_merge_tmp="$_z4h_update_tmp/${_z4h_update_name##*/}.merge"
 
   if '[' '-e' "$_z4h_update_target" ']'; then
     'command' 'cp' '-p' '--' "$_z4h_update_target" "$_z4h_update_backup_dir/$_z4h_update_name" || 'exit'
@@ -199,32 +331,35 @@ _z4h_update_merge_file() {
 
   'command' 'cp' '-p' '--' "$_z4h_update_fresh" "$_z4h_update_tmp_file" || 'exit'
 
-  # Apply user edits from the live file onto the freshly pulled template using
-  # the previous shipped template as the merge base. This preserves both
-  # appended custom blocks and in-place edits when they don't conflict.
+  # Apply user edits from the live file onto the refreshed template using the
+  # previous shipped template as the merge base. This keeps template updates and
+  # user customizations in the same file without forcing copy/paste after every
+  # release.
   if '[' '-e' "$_z4h_update_source" ']'; then
-    if 'command' 'git' 'merge-file' "$_z4h_update_tmp_file" "$_z4h_update_base" "$_z4h_update_source" \
-         >'/dev/null' 2>&1; then
+    if _z4h_update_merge_three_way "$_z4h_update_tmp_file" "$_z4h_update_base" \
+         "$_z4h_update_source" "$_z4h_update_merge_tmp"; then
       :
     else
       _z4h_update_status="$?"
       case "$_z4h_update_status" in
         '1')
-          if '[' "$_z4h_update_name" '=' '.zshrc' ']'; then
+          if '[' "$_z4h_update_name" '=' '.zshrc' '-a' "$_z4h_update_merge_tool" '=' 'git' ']'; then
             'command' 'cp' '-p' '--' "$_z4h_update_fresh" "$_z4h_update_tmp_file" || 'exit'
             if 'command' 'git' 'merge-file' '--union' "$_z4h_update_tmp_file" "$_z4h_update_base" \
                  "$_z4h_update_source" >'/dev/null' 2>&1; then
               >&2 'printf' '\033[33mz4h\033[0m: merged overlapping \033[4m%s\033[0m changes with union fallback\n' \
                 "$_z4h_update_target"
             else
-              'command' 'cp' '-p' '--' "$_z4h_update_tmp_file" "$_z4h_update_backup_dir/$_z4h_update_name.conflicted" || 'exit'
+              'command' 'cp' '-p' '--' "$_z4h_update_tmp_file" \
+                "$_z4h_update_backup_dir/$_z4h_update_name.conflicted" || 'exit'
               >&2 'printf' '\033[33mz4h\033[0m: merge conflict while updating \033[4m%s\033[0m\n' "$_z4h_update_target"
               >&2 'printf' '\033[33mz4h\033[0m: inspect \033[4m%s\033[0m and merge it manually\n' \
                 "$_z4h_update_backup_dir/$_z4h_update_name.conflicted"
               'exit' '1'
             fi
           else
-            'command' 'cp' '-p' '--' "$_z4h_update_tmp_file" "$_z4h_update_backup_dir/$_z4h_update_name.conflicted" || 'exit'
+            'command' 'cp' '-p' '--' "$_z4h_update_tmp_file" \
+              "$_z4h_update_backup_dir/$_z4h_update_name.conflicted" || 'exit'
             >&2 'printf' '\033[33mz4h\033[0m: merge conflict while updating \033[4m%s\033[0m\n' "$_z4h_update_target"
             >&2 'printf' '\033[33mz4h\033[0m: inspect \033[4m%s\033[0m and merge it manually\n' \
               "$_z4h_update_backup_dir/$_z4h_update_name.conflicted"
@@ -245,13 +380,15 @@ _z4h_update_merge_file() {
 >&2 'printf' '\033[33mz4h\033[0m: refreshing \033[4m%s/.zshenv\033[0m and \033[4m%s/.zshrc\033[0m\n' \
   "$_z4h_update_zdotdir" "$_z4h_update_zdotdir"
 
-_z4h_update_merge_file "$_z4h_update_zdotdir/.zshenv" "$_z4h_update_base_dir/.zshenv" .zshenv '.zshenv'
+_z4h_update_merge_file "$_z4h_update_zdotdir/.zshenv" "$_z4h_update_base_dir/.zshenv" \
+  "$_z4h_update_fresh_dir/.zshenv" '.zshenv'
 _z4h_update_merge_file "$_z4h_update_zdotdir/.zshrc" "$_z4h_update_base_dir/$_z4h_update_zshrc_variant" \
-  "$_z4h_update_zshrc_variant" '.zshrc'
+  "$_z4h_update_fresh_dir/$_z4h_update_zshrc_variant" '.zshrc'
 _z4h_update_normalize_local_hook
+_z4h_update_sync_snapshot_repo
 
-# Record the checkout that owns this updater so `z4h upgrade` can reuse it
-# later from any directory without guessing which repository to pull.
+# Record the owning checkout or managed upgrade bundle so `z4h upgrade` can
+# rerun this same workflow later from any directory.
 'printf' '%s\n' "$_z4h_update_repo_dir" >"$_z4h_update_repo_file" || 'exit'
 
 >&2 'printf' '\033[33mz4h\033[0m: backups saved in \033[4m%s\033[0m\n' "$_z4h_update_backup_dir"

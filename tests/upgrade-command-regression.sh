@@ -14,8 +14,9 @@ trap cleanup EXIT INT TERM
 test_repo=$tmp_dir/repo
 zdotdir=$tmp_dir/zdotdir
 
-mkdir -p -- "$test_repo/.git" "$zdotdir"
+mkdir -p -- "$test_repo" "$zdotdir"
 printf '%s\n' "$test_repo" >"$zdotdir/.z4h-repo"
+printf '%s\n' 'snapshot' >"$test_repo/.z4h-managed-repo"
 
 cat >"$test_repo/update" <<'EOF'
 #!/bin/sh

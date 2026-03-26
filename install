@@ -68,10 +68,29 @@ saved_tty_settings="$('command' 'stty' '-g')"
 zshenv=''
 zshrc=''
 z4h=''
+repo_dir=''
+repo_bundle_dir=''
+repo_update=''
+repo_zshrc_pc=''
+repo_zshrc_mac=''
+
+# When the installer itself is launched from a git checkout, remember that
+# checkout so `z4h upgrade` can reuse the real repository. Raw GitHub installs
+# don't have a checkout, so they seed a small managed upgrade bundle later in
+# the script instead.
+case "$0" in
+  */*)
+    repo_probe="$('cd' -- "${0%/*}" && 'pwd')" || 'exit'
+    if '[' '-d' "$repo_probe/.git" '-a' '-e' "$repo_probe/update" ']'; then
+      repo_dir="$repo_probe"
+    fi
+  ;;
+esac
 
 cleanup() {
   'trap' '-' 'INT' 'TERM' 'EXIT'
-  'command' 'rm' '-f' '--' "$zshenv" "$zshrc" "${zshrc:+$zshrc.bak}" "$z4h"
+  'command' 'rm' '-f' '--' "$zshenv" "$zshrc" "${zshrc:+$zshrc.bak}" "$z4h" \
+    "$repo_update" "$repo_zshrc_pc" "$repo_zshrc_mac"
   'command' 'stty' "$saved_tty_settings"
 }
 
@@ -285,10 +304,16 @@ if command -v 'mktemp' >'/dev/null' 2>&1; then
   zshenv="$('command' 'mktemp' "$HOME"/.zshenv.XXXXXXXXXX)"
   zshrc="$('command' 'mktemp' "$HOME"/.zshrc.XXXXXXXXXX)"
   z4h="$('command' 'mktemp' "$HOME"/.z4h.XXXXXXXXXX)"
+  repo_update="$('command' 'mktemp' "$HOME"/.z4h-update.XXXXXXXXXX)"
+  repo_zshrc_pc="$('command' 'mktemp' "$HOME"/.z4h-zshrc.XXXXXXXXXX)"
+  repo_zshrc_mac="$('command' 'mktemp' "$HOME"/.z4h-zshrc-mac.XXXXXXXXXX)"
 else
   zshenv="$HOME"/.zshenv.tmp."$$"
   zshrc="$HOME"/.zshrc.tmp."$$"
   z4h="$HOME"/.z4h.tmp."$$"
+  repo_update="$HOME"/.z4h-update.tmp."$$"
+  repo_zshrc_pc="$HOME"/.z4h-zshrc.tmp."$$"
+  repo_zshrc_mac="$HOME"/.z4h-zshrc-mac.tmp."$$"
 fi
 
 url='https://raw.githubusercontent.com/oirehT/zsh4humans/v5'
@@ -317,6 +342,37 @@ if ! err="$($fetch "$zshrc" '--' "$url"/.zshrc"$zshrc_suffix" 2>&1)"; then
   >&2 'printf' "%s\n" "$err"
   >&2 'printf' '\033[33mz4h\033[0m: failed to download \033[31m%s\033[0m\n' "$url"/.zshrc"$zshrc_suffix"
   'exit' '1'
+fi
+
+if '[' '-z' "$repo_dir" ']'; then
+  repo_bundle_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh4humans/repo/v5"
+
+  # Seed a managed upgrade bundle for raw GitHub installs. It carries the
+  # updater plus pristine templates so `z4h upgrade` can refresh configs later
+  # without requiring a full git checkout.
+  >&2 'printf' '\033[33mz4h\033[0m: preparing \033[4mz4h upgrade\033[0m bundle\n'
+
+  if ! err="$($fetch "$repo_update" '--' "$url"/update 2>&1)"; then
+    >&2 'printf' "%s\n" "$err"
+    >&2 'printf' '\033[33mz4h\033[0m: failed to download \033[31m%s\033[0m\n' "$url"/update
+    'exit' '1'
+  fi
+
+  if '[' "$zshrc_suffix" '=' '.mac' ']'; then
+    'command' 'cp' '-p' '--' "$zshrc" "$repo_zshrc_mac" || 'exit'
+    if ! err="$($fetch "$repo_zshrc_pc" '--' "$url"/.zshrc 2>&1)"; then
+      >&2 'printf' "%s\n" "$err"
+      >&2 'printf' '\033[33mz4h\033[0m: failed to download \033[31m%s\033[0m\n' "$url"/.zshrc
+      'exit' '1'
+    fi
+  else
+    'command' 'cp' '-p' '--' "$zshrc" "$repo_zshrc_pc" || 'exit'
+    if ! err="$($fetch "$repo_zshrc_mac" '--' "$url"/.zshrc.mac 2>&1)"; then
+      >&2 'printf' "%s\n" "$err"
+      >&2 'printf' '\033[33mz4h\033[0m: failed to download \033[31m%s\033[0m\n' "$url"/.zshrc.mac
+      'exit' '1'
+    fi
+  fi
 fi
 
 if '[' "$tmux" '=' '1' ']'; then
@@ -355,6 +411,19 @@ fi
 'command' 'mv' '--' "$zshenv" ~/'.zshenv'
 'command' 'mv' '--' "$zshrc" ~/'.zshrc'
 'command' 'mv' '--' "$z4h" "$Z4H"/z4h.zsh
+
+if '[' '-n' "$repo_bundle_dir" ']'; then
+  'command' 'mkdir' '-p' '--' "$repo_bundle_dir" || 'exit'
+  'command' 'cp' '-p' '--' ~/'.zshenv' "$repo_bundle_dir/.zshenv" || 'exit'
+  'command' 'cp' '-p' '--' "$repo_zshrc_pc" "$repo_bundle_dir/.zshrc" || 'exit'
+  'command' 'cp' '-p' '--' "$repo_zshrc_mac" "$repo_bundle_dir/.zshrc.mac" || 'exit'
+  'command' 'cp' '-p' '--' "$repo_update" "$repo_bundle_dir/update" || 'exit'
+  'command' 'chmod' '+x' '--' "$repo_bundle_dir/update" || 'exit'
+  'printf' '%s\n' 'snapshot' >"$repo_bundle_dir/.z4h-managed-repo" || 'exit'
+  repo_dir="$repo_bundle_dir"
+fi
+
+'[' '-z' "$repo_dir" ']' || 'printf' '%s\n' "$repo_dir" >~/'.z4h-repo'
 
 'printf' '%s\n' "$backup_dir" >"$Z4H"/welcome
 

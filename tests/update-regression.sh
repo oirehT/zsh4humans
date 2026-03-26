@@ -65,6 +65,41 @@ HOME=$home_dir Z4H_UPDATE_SKIP_GIT=1 Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$
 
 grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc"
 ! grep -q "z4h source ~/.zshrc.local" "$home_dir/.zshrc.local"
+
+# Managed snapshot bundles, as created by the GitHub installer, should refresh
+# templates without requiring a git checkout. Simulate that path with a local
+# refresh directory so the test stays offline and deterministic.
+snapshot_repo=$tmp_dir/snapshot-repo
+snapshot_home=$tmp_dir/snapshot-home
+snapshot_base=$tmp_dir/snapshot-base
+snapshot_refresh=$tmp_dir/snapshot-refresh
+
+mkdir -p -- "$snapshot_repo" "$snapshot_home" "$snapshot_base" "$snapshot_refresh"
+cp -p -- "$repo_dir/update" "$snapshot_repo/update"
+cp -p -- "$base_dir/.zshenv" "$snapshot_repo/.zshenv"
+cp -p -- "$base_dir/.zshrc" "$snapshot_repo/.zshrc"
+cp -p -- "$repo_dir/.zshrc.mac" "$snapshot_repo/.zshrc.mac"
+printf '%s\n' 'snapshot' >"$snapshot_repo/.z4h-managed-repo"
+
+cp -p -- "$base_dir/.zshenv" "$snapshot_base/.zshenv"
+cp -p -- "$base_dir/.zshrc" "$snapshot_base/.zshrc"
+cp -p -- "$base_dir/.zshenv" "$snapshot_home/.zshenv"
+cp -p -- "$base_dir/.zshrc" "$snapshot_home/.zshrc"
+
+printf '\n# snapshot customization\nalias snap='\''printf snapshot\\n'\''\n' >>"$snapshot_home/.zshrc"
+
+cp -p -- "$repo_dir/update" "$snapshot_refresh/update"
+printf '\n# snapshot refresh marker\n' >>"$snapshot_refresh/update"
+cp -p -- "$repo_dir/.zshenv" "$snapshot_refresh/.zshenv"
+cp -p -- "$repo_dir/.zshrc" "$snapshot_refresh/.zshrc"
+cp -p -- "$repo_dir/.zshrc.mac" "$snapshot_refresh/.zshrc.mac"
+
+HOME=$snapshot_home Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$snapshot_base \
+  Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh "$snapshot_repo/update"
+
+grep -q "z4h source ~/.zshrc.local" "$snapshot_home/.zshrc"
+grep -q "alias snap='printf snapshot\\\\n'" "$snapshot_home/.zshrc.local"
+grep -q "snapshot refresh marker" "$snapshot_repo/update"
 grep -q "alias gs='git status -sb'" "$home_dir/.zshrc.local"
 
 # Simulate a previously broken run that moved the hook block into ~/.zshrc.local

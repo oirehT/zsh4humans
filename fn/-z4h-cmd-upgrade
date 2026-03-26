@@ -15,18 +15,19 @@ fi
 
 local repo=${Z4H_REPO-}
 local repo_file=$ZDOTDIR/.z4h-repo
+local marker=.z4h-managed-repo
 
 if [[ -z $repo && -r $repo_file ]]; then
   IFS= read -r repo <$repo_file || repo=
 fi
 
 # First-time users may invoke `z4h upgrade` from inside their checkout before
-# `./update` has had a chance to persist its location. In that case, discover
-# the repository by walking up from the current working directory.
+# `./update` has had a chance to persist its location. In that case, discover a
+# usable upgrade source by walking up from the current working directory.
 if [[ -z $repo ]]; then
   local probe=$PWD
   while true; do
-    if [[ -e $probe/update && -d $probe/.git ]]; then
+    if [[ -e $probe/update && ( -d $probe/.git || -e $probe/$marker ) ]]; then
       repo=$probe
       break
     fi
@@ -36,9 +37,9 @@ if [[ -z $repo ]]; then
 fi
 
 if [[ -z $repo ]]; then
-  print -Pru2 -- '%F{3}z4h%f: cannot locate the %Bzsh4humans%b checkout for %Bupgrade%b'
+  print -Pru2 -- '%F{3}z4h%f: cannot locate a %Bzsh4humans%b upgrade source for %Bupgrade%b'
   print -Pru2 -- ''
-  print -Pru2 -- 'Run %F{2}./update%f once from your checkout, or export %BZ4H_REPO%b to it.'
+  print -Pru2 -- 'Run %F{2}./update%f once from your checkout, reinstall with the GitHub installer, or export %BZ4H_REPO%b.'
   return 1
 fi
 
@@ -51,8 +52,8 @@ if [[ ! -x $script ]]; then
   print -Pru2 -- "%F{3}z4h%f: %F{1}${script//\%/%%}%f is not executable"
   return 1
 fi
-if [[ ! -d $repo/.git ]]; then
-  print -Pru2 -- "%F{3}z4h%f: %F{1}${repo//\%/%%}%f is not a git checkout"
+if [[ ! -d $repo/.git && ! -e $repo/$marker ]]; then
+  print -Pru2 -- "%F{3}z4h%f: %F{1}${repo//\%/%%}%f is not a checkout or managed upgrade bundle"
   return 1
 fi
 
