@@ -55,7 +55,7 @@ fi
     return 1
   fi
   command cp -- $bin[1] $Z4H_PACKAGE_DIR/bin/zoxide || return
-  chmod +x -- $Z4H_PACKAGE_DIR/bin/zoxide 2>/dev/null || true
+  chmod +x $Z4H_PACKAGE_DIR/bin/zoxide 2>/dev/null || true
   if (( $#man == 1 )); then
     local mandir=$Z4H_PACKAGE_DIR/man/man1
     zf_mkdir -p -- $mandir || return
@@ -65,4 +65,3 @@ fi
   zf_rm -- $archive 2>/dev/null || true
   zf_rm -rf -- $tmp 2>/dev/null || true
 }
-

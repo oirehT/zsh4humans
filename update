@@ -143,7 +143,7 @@ _z4h_update_prepare_snapshot_refresh() {
     _z4h_update_fetch_snapshot_file '.zshrc.mac' "$_z4h_update_fresh_dir/.zshrc.mac"
   fi
 
-  'command' 'chmod' '+x' '--' "$_z4h_update_fresh_dir/update" || 'exit'
+  'command' 'chmod' '+x' "$_z4h_update_fresh_dir/update" || 'exit'
   'printf' '%s\n' 'snapshot' >"$_z4h_update_fresh_dir/$_z4h_update_repo_marker" || 'exit'
 }
 
@@ -311,7 +311,7 @@ _z4h_update_sync_snapshot_repo() {
       "$_z4h_update_repo_dir/$_z4h_update_file" || 'exit'
   done
 
-  'command' 'chmod' '+x' '--' "$_z4h_update_repo_dir/update" || 'exit'
+  'command' 'chmod' '+x' "$_z4h_update_repo_dir/update" || 'exit'
   'printf' '%s\n' 'snapshot' >"$_z4h_update_repo_dir/$_z4h_update_repo_marker" || 'exit'
 }
 

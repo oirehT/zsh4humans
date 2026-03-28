@@ -418,7 +418,7 @@ if '[' '-n' "$repo_bundle_dir" ']'; then
   'command' 'cp' '-p' '--' "$repo_zshrc_pc" "$repo_bundle_dir/.zshrc" || 'exit'
   'command' 'cp' '-p' '--' "$repo_zshrc_mac" "$repo_bundle_dir/.zshrc.mac" || 'exit'
   'command' 'cp' '-p' '--' "$repo_update" "$repo_bundle_dir/update" || 'exit'
-  'command' 'chmod' '+x' '--' "$repo_bundle_dir/update" || 'exit'
+  'command' 'chmod' '+x' "$repo_bundle_dir/update" || 'exit'
   'printf' '%s\n' 'snapshot' >"$repo_bundle_dir/.z4h-managed-repo" || 'exit'
   repo_dir="$repo_bundle_dir"
 fi

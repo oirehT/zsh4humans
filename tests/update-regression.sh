@@ -4,6 +4,7 @@ set -eu
 
 repo_dir=$(CDPATH= cd -- "${0%/*}/.." && pwd)
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/z4h-update-test.XXXXXXXXXX")
+real_chmod=$(command -v chmod)
 
 cleanup() {
   rm -rf -- "$tmp_dir"
@@ -97,8 +98,18 @@ cp -p -- "$repo_dir/.zshenv" "$snapshot_refresh/.zshenv"
 cp -p -- "$repo_dir/.zshrc" "$snapshot_refresh/.zshrc"
 cp -p -- "$repo_dir/.zshrc.mac" "$snapshot_refresh/.zshrc.mac"
 
+cat >"$snapshot_fake_bin/chmod" <<EOF
+#!/bin/sh
+if [ "\${2-}" = '--' ]; then
+  printf '%s\n' 'chmod received unsupported --' >&2
+  exit 1
+fi
+exec "$real_chmod" "\$@"
+EOF
+chmod +x "$snapshot_fake_bin/chmod"
+
 HOME=$snapshot_home Z4H_UPDATE_SKIP_Z4H=1 Z4H_UPDATE_BASE_DIR=$snapshot_base \
-  Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh "$snapshot_repo/update"
+  Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh PATH="$snapshot_fake_bin:$PATH" "$snapshot_repo/update"
 
 grep -q "z4h source ~/.zshrc.local" "$snapshot_home/.zshrc"
 grep -q "alias snap='printf snapshot\\\\n'" "$snapshot_home/.zshrc.local"
