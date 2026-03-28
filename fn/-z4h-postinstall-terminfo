@@ -2,6 +2,15 @@
 
 eval "$_z4h_opt"
 
+_z4h_copy_terminfo_tree() {
+  local src_dir=$1 dst_dir=$2 src dst
+  for src in $src_dir/*; do
+    dst=$dst_dir/${src:t}
+    [[ ! -L $dst ]] || zf_rm -f -- $dst || return
+    cp -- $src $dst || return
+  done
+}
+
 # Fork to avoid triggering https://www.zsh.org/mla/workers/2020/msg00588.html
 (
   # ${(L):-I} is ı in Turkish locale.
@@ -13,13 +22,13 @@ eval "$_z4h_opt"
       printf -v char "\\x$hex"
       [[ $char == $~pat ]] || continue
       [[ -e ~/.terminfo/$hex ]] || zf_mkdir -p -- ~/.terminfo/$hex || return
-      cp -- $Z4H_PACKAGE_DIR/$hex/* ~/.terminfo/$hex/ || return
+      _z4h_copy_terminfo_tree $Z4H_PACKAGE_DIR/$hex ~/.terminfo/$hex || return
       if [[ $char == [a-z] || ! ~/.terminfo/$char -ef ~/.terminfo/${(L)char}] ]]; then
         [[ -e ~/.terminfo/$char ]]                       ||
           zf_ln -s -- $hex ~/.terminfo/$char 2>/dev/null ||
           zf_mkdir -p -- ~/.terminfo/$char               ||
           return
-        cp -- $Z4H_PACKAGE_DIR/$hex/* ~/.terminfo/$char/ || return
+        _z4h_copy_terminfo_tree $Z4H_PACKAGE_DIR/$hex ~/.terminfo/$char || return
       fi
       zf_rm -rf -- $Z4H_PACKAGE_DIR/$hex || return
     done
