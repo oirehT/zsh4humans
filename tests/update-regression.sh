@@ -79,6 +79,7 @@ snapshot_pwd_home=$tmp_dir/snapshot-pwd-home
 
 mkdir -p -- "$snapshot_repo" "$snapshot_home" "$snapshot_base" "$snapshot_refresh" "$snapshot_fake_bin" \
   "$snapshot_pwd_home"
+snapshot_pwd_home_abs=$(CDPATH= cd -- "$snapshot_pwd_home" && pwd)
 cp -p -- "$repo_dir/update" "$snapshot_repo/update"
 cp -p -- "$base_dir/.zshenv" "$snapshot_repo/.zshenv"
 cp -p -- "$base_dir/.zshrc" "$snapshot_repo/.zshrc"
@@ -131,7 +132,7 @@ chmod +x "$snapshot_fake_bin/zsh"
     Z4H_UPDATE_REFRESH_DIR=$snapshot_refresh "$snapshot_repo/update" >/dev/null 2>&1
 )
 
-[ "$(cat "$tmp_dir/snapshot-pwd.out")" = "$snapshot_pwd_home" ]
+[ "$(cat "$tmp_dir/snapshot-pwd.out")" = "$snapshot_pwd_home_abs" ]
 
 # Repeated updates in the same second must not reuse the same backup directory,
 # or later runs can overwrite the earlier safety copy.

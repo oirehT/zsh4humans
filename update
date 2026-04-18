@@ -95,7 +95,7 @@ _z4h_update_zshrc_variant='.zshrc'
 if '[' '-r' "$_z4h_update_zdotdir/.zshrc" ']' &&
    'command' 'grep' '-q' "zstyle ':z4h:bindkey' keyboard  'mac'" "$_z4h_update_zdotdir/.zshrc"; then
   _z4h_update_zshrc_variant='.zshrc.mac'
-elif '[' "$(uname -s 2>/dev/null)" '=' 'Darwin' ']'; then
+elif '[' '!' '-r' "$_z4h_update_zdotdir/.zshrc" '-a' "$(uname -s 2>/dev/null)" '=' 'Darwin' ']'; then
   _z4h_update_zshrc_variant='.zshrc.mac'
 fi
 
