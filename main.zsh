@@ -21,9 +21,7 @@ else
   } || return
 fi
 
-if ! { zmodload -s zsh/terminfo zsh/zselect && [[ -n $^fpath/compinit(#qN) ]] ||
-       [[ $ZSH_PATCHLEVEL == zsh-5.8-0-g77d203f && $_z4h_exe == */bin/zsh &&
-          -e ${_z4h_exe:h:h}/share/zsh/5.8/scripts/relocate ]] }; then
+if ! { zmodload -s zsh/terminfo zsh/zselect && [[ -n $^fpath/compinit(#qN) ]] }; then
   builtin source $Z4H/zsh4humans/sc/exec-zsh-i || return
 fi
 
@@ -109,15 +107,9 @@ functions -Ms _z4h_err
   infopath=(${@:|infopath} $infopath '')
 } {${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/share/info},/opt/local/share/info}(-/N)
 
-if [[ $ZSH_PATCHLEVEL == zsh-5.8-0-g77d203f && $_z4h_exe == */bin/zsh &&
-      -e ${_z4h_exe:h:h}/share/zsh/5.8/scripts/relocate ]]; then
-  if [[ $TERMINFO != ~/.terminfo && $TERMINFO != ${_z4h_exe:h:h}/share/terminfo &&
-        -e ${_z4h_exe:h:h}/share/terminfo/$TERM[1]/$TERM ]]; then
-    export TERMINFO=${_z4h_exe:h:h}/share/terminfo
-  fi
-  if [[ -e ${_z4h_exe:h:h}/share/man ]]; then
-    manpath=(${_z4h_exe:h:h}/share/man $manpath '')
-  fi
+# Man pages of zsh from a conda environment, such as the one sc/exec-zsh-i installs.
+if [[ -d ${_z4h_exe:h:h}/conda-meta && -d ${_z4h_exe:h:h}/share/man ]]; then
+  manpath=(${_z4h_exe:h:h}/share/man $manpath '')
 fi
 
 path+=($Z4H/fzf/bin)

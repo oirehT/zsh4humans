@@ -65,7 +65,7 @@ It dispatches to `fn/-z4h-cmd-*` helpers plus a few built-ins defined directly i
 | Shared history defaults | [`.zshrc.shared`](../.zshrc.shared), [`z4h.zsh`](../z4h.zsh) |
 | Autosuggestion fetch and accept behavior | `fn/-z4h-autosuggest-fetch`, `fn/z4h-autosuggest-accept`, `fn/-z4h-postinstall-zsh-autosuggestions` |
 | History substring search dependency | `fn/-z4h-postinstall-zsh-history-substring-search` |
-| Syntax highlighting dependency | `fn/-z4h-postinstall-zsh-syntax-highlighting` |
+| Syntax highlighting dependency | `fn/-z4h-postinstall-zsh-syntax-highlighting`, [`patches/zsh-syntax-highlighting.patch`](../patches/zsh-syntax-highlighting.patch), `fn/-z4h-apply-patch` |
 
 ## SSH, tmux, And Remote Execution
 
@@ -73,7 +73,7 @@ It dispatches to `fn/-z4h-cmd-*` helpers plus a few built-ins defined directly i
 | --- | --- |
 | SSH teleportation command path | `fn/-z4h-cmd-ssh`, `fn/-z4h-help-ssh`, [`sc/ssh-bootstrap`](../sc/ssh-bootstrap) |
 | SSH follow-up checks | `fn/-z4h-ssh-maybe-update`, `fn/-z4h-start-ssh-agent` |
-| Managed tmux bootstrap | [`main.zsh`](../main.zsh), [`sc/install-tmux`](../sc/install-tmux), [`.tmux.conf`](../.tmux.conf), `fn/-z4h-tmux-bypass` |
+| Managed tmux bootstrap | [`main.zsh`](../main.zsh), [`sc/install-tmux`](../sc/install-tmux), [`sc/install-conda`](../sc/install-conda), [`.tmux.conf`](../.tmux.conf), `fn/-z4h-tmux-bypass` |
 | `sudo` and `docker` terminal normalization | `fn/-z4h-cmd-sudo`, `fn/-z4h-cmd-docker` |
 
 ## Dependency Installation And Refresh

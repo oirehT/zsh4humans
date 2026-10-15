@@ -11,7 +11,7 @@ read_when:
 
 | Path | Purpose |
 | --- | --- |
-| `AGENTS.md` | Repo-specific instructions for agent workflows, docs, verification, dependency policy, and safety constraints. |
+| `AGENTS.md` | Repo-specific instructions for agent workflows, verification, dependency pins and how to bump them, and safety constraints. |
 | `README.md` | Primary user-facing guide for installation, usage, customization, and updates. |
 | `tips.md` | Advanced user documentation with configuration examples and troubleshooting notes. |
 | `changelog.md` | Project change log. When merging contributor work, this is the place that may need the thank-you note required by repo policy. |
@@ -35,8 +35,9 @@ read_when:
 | `docs/` | Contributor-facing documentation for architecture, repo layout, feature ownership, and verification. |
 | `fn/` | Autoloaded zsh functions, widgets, command helpers, completion glue, and post-install hooks. This is where most feature work lands. |
 | `sc/` | POSIX `sh` helper scripts used during bootstrap, remote SSH setup, tmux installation, and fallback zsh startup. |
+| `patches/` | Patches that postinstall hooks apply to downloaded dependencies, currently zsh-syntax-highlighting. |
 | `zb/` | Small bootstrap shims used by early startup. |
-| `tests/` | Focused regression scripts for update, upgrade, and SSH bootstrap behavior. |
+| `tests/` | Focused regression scripts for completion dumps, dependency patching, update, upgrade, and SSH bootstrap behavior. |
 | `.vscode/` | Editor-local project settings. |
 
 ## Root Templates And Entry Points
@@ -61,7 +62,7 @@ of stable responsibilities.
 | --- | --- | --- |
 | Core init and orchestration | `-z4h-init`, `-z4h-init-zle`, `-z4h-main-complete`, `-z4h-compinit`, `-z4h-check-rc-zwcs` | Startup sequencing, ZLE initialization, completion setup, and validation of generated artifacts. |
 | `z4h` command implementations | `-z4h-cmd-bindkey`, `-z4h-cmd-help`, `-z4h-cmd-ssh`, `-z4h-cmd-sudo`, `-z4h-cmd-docker`, `-z4h-cmd-update`, `-z4h-cmd-upgrade`, `-z4h-cmd-compile` | Subcommands dispatched by the top-level `z4h` function in `main.zsh`. |
-| Installation and post-install hooks | `-z4h-install-one`, `-z4h-install-many`, `-z4h-postinstall-*` | Cloning, refreshing, and post-processing bundled tools and plugin dependencies. |
+| Installation and post-install hooks | `-z4h-install-one`, `-z4h-install-many`, `-z4h-postinstall-*`, `-z4h-apply-patch`, `-z4h-fetch-systemd-completions` | Downloading pinned versions of bundled tools and plugins, and post-processing them. |
 | Completion and fuzzy selection | `-z4h-fzf`, `-z4h-present-files`, `-z4h-comp-files`, `-z4h-comp-words`, `-z4h-comp-insert-all`, `-z4h-complete-*`, `z4h-fzf-*` | `fzf` integration, command/file completion helpers, and command-specific completion glue. |
 | History, navigation, and editing widgets | `-z4h-update-dir-history`, `-z4h-read-dir-history`, `-z4h-write-dir-history`, `z4h-cd-down`, `z4h-backward-word`, `z4h-forward-zword`, `z4h-accept-line`, `z4h-stash-buffer` | Custom widgets for movement, history search, directory traversal, and editing behavior. |
 | Terminal integration and display | `-z4h-set-term-title`, `-z4h-vte-osc7`, `-z4h-osc9`, `-z4h-enable-iterm2-integration`, `-z4h-reset-kitty-keyboard`, `-z4h-save-screen`, `-z4h-restore-screen` | Title updates, shell integration metadata, terminal-specific escape sequences, and screen preservation. |
@@ -80,8 +81,9 @@ of stable responsibilities.
 
 | Path | Purpose |
 | --- | --- |
-| `sc/exec-zsh-i` | Finds or installs a suitable interactive zsh and `exec`s into it. Used when bootstrap starts in an unsuitable shell or zsh version. |
-| `sc/install-tmux` | Installs a bundled tmux binary from released archives with checksum support and interactive destination selection. |
+| `sc/exec-zsh-i` | Finds a suitable interactive zsh, installing zsh from conda-forge if there is none, and `exec`s into it. Used when bootstrap starts in an unsuitable shell or zsh version. |
+| `sc/install-conda` | Installs conda-forge packages into a prefix with a checksum-pinned micromamba. Used for zsh and tmux. |
+| `sc/install-tmux` | Installs the bundled stock tmux from conda-forge into the package directory given with `-d`. |
 | `sc/ssh-bootstrap` | Self-contained remote bootstrap payload for z4h SSH teleportation, including send/receive staging and bypass behavior. |
 | `sc/setup` | Prepares the managed cache/install directory layout and preserves sticky cache state across refreshes. |
 
@@ -89,6 +91,8 @@ of stable responsibilities.
 
 | Path | Purpose |
 | --- | --- |
+| `tests/compinit-regression.sh` | Covers completion dump invalidation and reuse. |
+| `tests/apply-patch-regression.sh` | Checks that `-z4h-apply-patch` applies `git diff` output exactly, refuses a patch that does not match, and that the bundled zsh-syntax-highlighting patch stays parseable. |
 | `tests/update-regression.sh` | Covers update template merging, `.zshrc.local` migration, snapshot refreshes, backup directory handling, and current-working-directory preservation. |
 | `tests/upgrade-command-regression.sh` | Verifies that `-z4h-cmd-upgrade` resolves the managed repository and forwards `ZDOTDIR` and `Z4H` correctly. |
 | `tests/ssh-bootstrap-regression.sh` | Guards the SSH bootstrap tar option fix and checks POSIX shell syntax for `sc/ssh-bootstrap`. |

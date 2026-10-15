@@ -36,27 +36,42 @@ else
   zstyle -a :z4h:$1 channel channel || channel=(stable)
   local tmux_cmd='sh -- '${(q)Z4H}/zsh4humans/sc/install-tmux' -d "${Z4H_PACKAGE_DIR}" -q'
   tmux_cmd+=' && print -r -- "$EPOCHREALTIME" >"${Z4H_PACKAGE_DIR}"/stamp'
+  local brew_cmd='command brew tap --quiet homebrew/command-not-found && zf_mkdir -- "${Z4H_PACKAGE_DIR}"'
+  # Pinned upstream versions. Plugins without regular releases are pinned to a commit.
+  # Bumping zsh-syntax-highlighting requires regenerating patches/zsh-syntax-highlighting.patch.
   case $#channel-$channel[1] in
     2-command) command=$channel[2];;
     1-stable|1-testing)
       case $1 in
-        tmux)                       command=$tmux_cmd;;
-        terminfo)                   url=https://github.com/romkatv/terminfo/archive/v1.4.0.tar.gz;;
-        fzf)                        url=https://github.com/junegunn/fzf/archive/refs/tags/v0.65.1.tar.gz;;
-        zoxide)                     url=https://github.com/ajeetdsouza/zoxide/archive/refs/tags/v0.9.8.tar.gz;;
-        *)                          url=https://github.com/zsh4humans/$1/archive/z4h-$channel[1].tar.gz;;
+        tmux)                         command=$tmux_cmd;;
+        systemd)                      command='-z4h-fetch-systemd-completions v262';;
+        homebrew-command-not-found)   command=$brew_cmd;;
+        terminfo)                     url=https://github.com/romkatv/terminfo/archive/v1.4.0.tar.gz;;
+        fzf)                          url=https://github.com/junegunn/fzf/archive/refs/tags/v0.74.5.tar.gz;;
+        zoxide)                       url=https://github.com/ajeetdsouza/zoxide/archive/refs/tags/v0.10.0.tar.gz;;
+        powerlevel10k)                url=https://github.com/romkatv/$1/archive/d05a1b00f9a61f9578bf9dc19b8451942dde8734.tar.gz;;
+        zsh-completions)              url=https://github.com/zsh-users/$1/archive/6661b4b68173784ba31ef10ce4b5cb1c9ecfdcac.tar.gz;;
+        zsh-autosuggestions)          url=https://github.com/zsh-users/$1/archive/85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5.tar.gz;;
+        zsh-syntax-highlighting)      url=https://github.com/zsh-users/$1/archive/e6683f20e5c38d3e5447f45845d04ddda75d0f23.tar.gz;;
+        zsh-history-substring-search) url=https://github.com/zsh-users/$1/archive/a0bdb0d47dbaba31dba2db7af8c48a5d9c74049a.tar.gz;;
+        *)
+          print -Pru2 -- "%F{3}z4h%f: %F{1}internal error%f: unknown package: ${1//\%/%%}"
+          return 1
+        ;;
       esac
     ;;
     1-dev)
       case $1 in
         fzf)                          url=https://github.com/junegunn/$1/archive/master.tar.gz;;
+        zoxide)                       url=https://github.com/ajeetdsouza/zoxide/archive/refs/tags/v0.10.0.tar.gz;;
         powerlevel10k)                url=https://github.com/romkatv/$1/archive/master.tar.gz;;
-        systemd)                      url=https://github.com/systemd/$1/archive/master.tar.gz;;
+        systemd)                      url=https://github.com/systemd/$1/archive/main.tar.gz;;
         zsh-completions)              url=https://github.com/zsh-users/$1/archive/master.tar.gz;;
         zsh-autosuggestions)          url=https://github.com/zsh-users/$1/archive/master.tar.gz;;
         zsh-syntax-highlighting)      url=https://github.com/zsh-users/$1/archive/master.tar.gz;;
         zsh-history-substring-search) url=https://github.com/zsh-users/$1/archive/master.tar.gz;;
-        terminfo)                     url=https://github.com/romkatv/terminfo/archive/v1.3.0.tar.gz;;
+        terminfo)                     url=https://github.com/romkatv/terminfo/archive/master.tar.gz;;
+        homebrew-command-not-found)   command=$brew_cmd;;
         tmux)                         command=$tmux_cmd;;
         *)
           print -Pru2 -- "%F{3}z4h%f: %F{1}internal error%f: unknown package: ${1//\%/%%}"

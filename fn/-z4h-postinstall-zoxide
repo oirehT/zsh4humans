@@ -8,7 +8,14 @@ else
   print -ru2 -- ${(%):-"%F{3}z4h%f: fetching %Bzoxide%b binary"}
 fi
 
-local v=0.9.8 uname_sm target url
+# The binary release must match the source tarball pinned in -z4h-install-one.
+local v uname_sm target url
+v=${${(M)${(f)"$(<$Z4H_PACKAGE_DIR/Cargo.toml)"}:#version = \"*\"}[1]} || return
+v=${${v#version = \"}%\"}
+if [[ $v != <->.<->.<-> ]]; then
+  print -Pru2 -- "%F{3}z4h%f: cannot find %Bzoxide%b version in %F{1}Cargo.toml%f"
+  return 1
+fi
 [[ ! -v commands[uname] ]] || uname_sm=$(uname -sm) || return
 
 case $uname_sm in
@@ -16,6 +23,10 @@ case $uname_sm in
   'Darwin x86_64')  target=x86_64-apple-darwin  ;;
   'Linux x86_64')   target=x86_64-unknown-linux-musl ;;
   'Linux aarch64')  target=aarch64-unknown-linux-musl ;;
+  'Linux armv6l')   target=arm-unknown-linux-musleabihf ;;
+  'Linux armv7l')   target=armv7-unknown-linux-musleabihf ;;
+  'Linux armv8l')   target=armv7-unknown-linux-musleabihf ;;
+  'Linux i686')     target=i686-unknown-linux-musl ;;
   *)
     print -Pru2 -- "%F{3}z4h%f: unsupported platform for %Bzoxide%b: %F{1}${uname_sm//\%/%%}%f"
     return 1

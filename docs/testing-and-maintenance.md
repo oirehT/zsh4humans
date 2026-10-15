@@ -14,6 +14,7 @@ The repository keeps a small but useful regression suite under [`tests/`](../tes
 | Script | What it protects |
 | --- | --- |
 | [`tests/compinit-regression.sh`](../tests/compinit-regression.sh) | Completion dump invalidation behavior, including reuse when only completion file mtimes change and refresh when completion files are added. |
+| [`tests/apply-patch-regression.sh`](../tests/apply-patch-regression.sh) | Exact application of `git diff` patches by `fn/-z4h-apply-patch`, refusal of mismatched patches, and parseability of the bundled zsh-syntax-highlighting patch. |
 | [`tests/update-regression.sh`](../tests/update-regression.sh) | Template merge behavior, `.zshrc.local` migration, snapshot refresh logic, backup naming, and working-directory preservation during update. |
 | [`tests/upgrade-command-regression.sh`](../tests/upgrade-command-regression.sh) | The `z4h upgrade` command wrapper and its propagation of `ZDOTDIR` and `Z4H`. |
 | [`tests/ssh-bootstrap-regression.sh`](../tests/ssh-bootstrap-regression.sh) | The SSH bootstrap tar-option regression and shell syntax validity for `sc/ssh-bootstrap`. |
@@ -22,6 +23,7 @@ Run them from the repository root with plain POSIX `sh`:
 
 ```sh
 sh tests/compinit-regression.sh
+sh tests/apply-patch-regression.sh
 sh tests/update-regression.sh
 sh tests/upgrade-command-regression.sh
 sh tests/ssh-bootstrap-regression.sh
@@ -34,7 +36,7 @@ these quick checks:
 
 ```sh
 zsh -n main.zsh fn/<file>
-shellcheck sc/install-tmux
+shellcheck sc/install-conda sc/install-tmux
 ```
 
 There is no build step. `.zwc` files are runtime artifacts and should stay out

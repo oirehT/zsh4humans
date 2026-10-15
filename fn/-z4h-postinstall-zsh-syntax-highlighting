@@ -2,4 +2,6 @@
 
 eval "$_z4h_opt"
 
+-z4h-apply-patch $Z4H_PACKAGE_DIR $Z4H/zsh4humans/patches/zsh-syntax-highlighting.patch || return
+
 z4h compile -- $Z4H_PACKAGE_DIR/{zsh-syntax-highlighting.zsh,highlighters/*/*.zsh}(N)

@@ -48,7 +48,9 @@ That script:
 
 - Searches common locations for a usable zsh.
 - Verifies version and module availability.
-- Downloads and installs `zsh 5.8` when needed.
+- Installs zsh 5.9.2 from conda-forge into
+  `${XDG_DATA_HOME:-~/.local/share}/zsh4humans/zsh-5.9.2` when no zsh 5.8 or newer
+  is found.
 - `exec`s into the chosen binary so the rest of startup runs in a supported
   interactive shell.
 

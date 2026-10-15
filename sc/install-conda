@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# Usage: install-conda PREFIX SPEC...
+#
+# Installs conda-forge packages matching SPEC... into PREFIX with a pinned micromamba.
+# Prints nothing on success. Conda bakes PREFIX into the installed files, so install
+# directly into the final location whenever the package reads files relative to it.
+
+set -ue
+
+if [ $# -lt 2 ]; then
+  >&2 printf '\033[33mz4h\033[0m: \033[31minternal error\033[0m: usage: install-conda PREFIX SPEC...\n'
+  exit 1
+fi
+
+prefix=$1
+shift
+
+version=2.9.0-0
+case "$(uname -sm)" in
+  'Linux x86_64')   platform=linux-64;      sha256=366cd9cd8be14df1ab8ed50352a82111082a36686b2d389fdb79a92c3fafb3e3;;
+  'Linux aarch64')  platform=linux-aarch64; sha256=9f93b974adcb4d166996af969b6cd371287d1a3e52733704727884d9b74cb7a7;;
+  'Linux ppc64le')  platform=linux-ppc64le; sha256=af28181e62239dcc94ae23eefac3dce24b3d7b17a769810cbee99b183333f9a3;;
+  'Darwin x86_64')  platform=osx-64;        sha256=1e71054bb3ac9a076e21f7ec48acfef536f9b3f1408f371a942784bf5ef83d8a;;
+  'Darwin arm64')   platform=osx-arm64;     sha256=ec2a072f028e1a7cf20f3e2e74d5a8127cf5a5f27636375b5359811565f4e5be;;
+  *)
+    >&2 printf '\033[33mz4h\033[0m: conda-forge has no packages for \033[31m%s\033[0m\n' "$(uname -sm)"
+    exit 1
+  ;;
+esac
+
+url=https://github.com/mamba-org/micromamba-releases/releases/download/$version/micromamba-$platform
+
+# Next to PREFIX rather than in /tmp, which is often mounted noexec.
+tmp=$(dirname -- "$prefix")/.z4h-install-conda.$$
+rm -rf -- "$tmp"
+trap 'rm -rf -- "$tmp"' EXIT
+trap 'exit 1' HUP INT TERM
+mkdir -p -- "$tmp"
+
+if command -v curl >/dev/null 2>&1; then
+  err=$(command curl -fsSLo "$tmp"/micromamba -- "$url" 2>&1) || ret=$?
+elif command -v wget >/dev/null 2>&1; then
+  err=$(command wget -qO "$tmp"/micromamba -- "$url" 2>&1) || ret=$?
+else
+  >&2 printf '\033[33mz4h\033[0m: please install \033[32mcurl\033[0m or \033[32mwget\033[0m\n'
+  exit 1
+fi
+if [ "${ret:-0}" != 0 ]; then
+  >&2 printf '%s\n' "$err"
+  >&2 printf '\033[33mz4h\033[0m: failed to download \033[31m%s\033[0m\n' "$url"
+  exit 1
+fi
+
+if command -v sha256sum >/dev/null 2>&1; then
+  hash=$(sha256sum -b -- "$tmp"/micromamba)
+elif command -v shasum >/dev/null 2>&1; then
+  hash=$(shasum -b -a 256 -- "$tmp"/micromamba)
+else
+  >&2 printf '\033[33mz4h\033[0m: please install \033[32msha256sum\033[0m or \033[32mshasum\033[0m\n'
+  exit 1
+fi
+if [ "${hash%% *}" != "$sha256" ]; then
+  >&2 printf '\033[33mz4h\033[0m: \033[31msha256 mismatch\033[0m: %s\n' "$url"
+  exit 1
+fi
+chmod +x -- "$tmp"/micromamba
+
+# Keep micromamba's caches and environment registry out of the user's home directory.
+if ! HOME=$tmp XDG_CACHE_HOME=$tmp/.cache XDG_CONFIG_HOME=$tmp/.config XDG_DATA_HOME=$tmp/.local/share \
+     "$tmp"/micromamba create --no-rc -y -r "$tmp"/root -p "$prefix" \
+     --override-channels -c conda-forge "$@" >"$tmp"/log 2>&1; then
+  >&2 cat -- "$tmp"/log
+  >&2 printf '\033[33mz4h\033[0m: failed to install \033[31m%s\033[0m from conda-forge\n' "$*"
+  exit 1
+fi

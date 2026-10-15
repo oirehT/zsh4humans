@@ -4,8 +4,7 @@ set -eu
 
 # Resolve the repository root from this script location so the check can run
 # from anywhere without relying on the caller's current working directory.
-repo_dir=${0%/*}
-repo_dir=${repo_dir%/*}
+repo_dir=$(CDPATH= cd -- "${0%/*}/.." && pwd)
 bootstrap=$repo_dir/sc/ssh-bootstrap
 
 # Keep this guard explicit: the retrieval path prepares GNU tar ownership flags

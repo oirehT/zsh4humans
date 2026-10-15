@@ -25,6 +25,12 @@ fi
 
 local content
 content=$(<$comp.in)
+content=${content//'{{LIBEXECDIR}}'/$systemd}
 
-print -r -- ${${content//@rootlibexecdir@/$systemd}//\\@/@} >$comp
+if [[ $content == *'{{'[A-Z_]##'}}'* ]]; then
+  print -Pru2 -- '%F{3}z4h%f: unknown placeholder in %F{1}_systemctl.in%f'
+  return 1
+fi
+
+print -r -- $content >$comp
 zf_rm -- $comp.in

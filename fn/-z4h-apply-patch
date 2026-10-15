@@ -1,0 +1,104 @@
+#!/usr/bin/env zsh
+#
+# Usage: -z4h-apply-patch <dir> <patch>
+#
+# Applies a patch produced by `git diff --no-renames` to files under <dir>. Hunks must match
+# exactly: there is no fuzz and no offset search. Doing this in zsh avoids depending on
+# patch(1), which many minimal Linux systems lack.
+
+eval "$_z4h_opt"
+
+if (( ARGC != 2 )); then
+  print -Pru2 -- '%F{3}z4h%f: %F{1}internal error%f: usage: -z4h-apply-patch <dir> <patch>'
+  return 1
+fi
+
+local -a lines src dst
+lines=("${(@f)$(<$2)}") || return
+# A sentinel header flushes the last file.
+lines+=('diff --git')
+
+local line file content mode
+local -i pos start old new is_new
+
+() {
+  for line in "${lines[@]}"; do
+    if [[ $line == 'diff --git'* ]]; then
+      if [[ -n $file ]]; then
+        (( !old && !new )) || return
+        dst+=("${(@)src[pos,-1]}")
+        zf_mkdir -p -- ${file:h} || return
+        if (( $#dst )); then
+          print -r -- "${(pj:\n:)dst}" >$file || return
+        else
+          : >$file || return
+        fi
+        file=
+      fi
+      mode=header
+      is_new=0
+      continue
+    fi
+    case $mode in
+      header)
+        case $line in
+          '--- /dev/null') is_new=1;;
+          '--- a/'*)       ;;
+          '--- '*|'+++ /dev/null') return 1;;
+          '+++ b/'*)
+            file=$1/${line#+++ b/}
+            src=()
+            if (( ! is_new )); then
+              [[ -f $file ]] || return
+              content=
+              IFS= read -rd '' content <$file
+              [[ $content == *$'\n' ]] || return
+              content=${content%$'\n'}
+              src=("${(@ps:\n:)content}")
+            fi
+            dst=()
+            pos=1
+            old=0
+            new=0
+            mode=body
+          ;;
+        esac
+      ;;
+      body)
+        if (( !old && !new )); then
+          [[ $line == (#b)'@@ -'(<->)(|,(<->))' +'(<->)(|,(<->))' @@'* ]] || return
+          start=$match[1]
+          old=${match[3]:-1}
+          new=${match[6]:-1}
+          # A hunk that removes nothing inserts after line $start.
+          (( old )) || (( ++start ))
+          (( start >= pos && start <= $#src + 1 )) || return
+          dst+=("${(@)src[pos,start-1]}")
+          pos=start
+          continue
+        fi
+        case $line in
+          [-\ ]*)
+            (( old && pos <= $#src )) || return
+            [[ $src[pos] == "${line:1}" ]] || return
+            if [[ $line == ' '* ]]; then
+              (( new )) || return
+              dst+=("${line:1}")
+              (( --new ))
+            fi
+            (( ++pos, --old ))
+          ;;
+          +*)
+            (( new )) || return
+            dst+=("${line:1}")
+            (( --new ))
+          ;;
+          *) return 1;;
+        esac
+      ;;
+    esac
+  done
+} "$@" || {
+  print -Pru2 -- "%F{3}z4h%f: failed to apply %F{1}${2//\%/%%}%f to %F{1}${${file:-$1}//\%/%%}%f"
+  return 1
+}

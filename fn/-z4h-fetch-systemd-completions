@@ -1,0 +1,48 @@
+#!/usr/bin/env zsh
+#
+# Usage: -z4h-fetch-systemd-completions <tag>
+#
+# Downloads zsh completions of the specified systemd release into
+# $Z4H_PACKAGE_DIR/shell-completion/zsh. Fetching individual files avoids
+# downloading the whole systemd source tree.
+
+eval "$_z4h_opt"
+
+if (( ARGC != 1 )); then
+  print -Pru2 -- '%F{3}z4h%f: %F{1}internal error%f: usage: -z4h-fetch-systemd-completions <tag>'
+  return 1
+fi
+
+# Files in shell-completion/zsh of systemd v262, excluding meson.build.
+local files=(
+  _bootctl _busctl _coredumpctl _hostnamectl _journalctl _kernel-install _localectl _loginctl
+  _machinectl _networkctl _oomctl _resolvectl _run0 _sd_bus_address _sd_hosts_or_user_at_host
+  _sd_machines _sd_outputmodes _sd_unit_files _storagectl _systemctl.in _systemd _systemd-analyze
+  _systemd-cryptenroll _systemd-delta _systemd-hwdb _systemd-id128 _systemd-inhibit
+  _systemd-nspawn _systemd-path _systemd-run _systemd-sysinstall _systemd-sysupdate
+  _systemd-tmpfiles _timedatectl _udevadm _updatectl _userdbctl _varlinkctl)
+
+local dir=$Z4H_PACKAGE_DIR/shell-completion/zsh
+local base=https://raw.githubusercontent.com/systemd/systemd/$1/shell-completion/zsh
+local urls=($base/$^files)
+
+zf_mkdir -p -- $dir || return
+
+local err
+if (( $+commands[curl] )); then
+  err="$(builtin cd -q -- $dir && command curl -fsSL --remote-name-all -- $urls 2>&1)"
+elif (( $+commands[wget] )); then
+  err="$(builtin cd -q -- $dir && command wget -q -- $urls 2>&1)"
+else
+  print -Pru2 -- "%F{3}z4h%f: please install %F{1}curl%f or %F{1}wget%f"
+  return 1
+fi
+local -i ret=$?
+
+# Regular non-empty files only, so that a partial download fails loudly.
+local fetched=($dir/$^files(N.L+0))
+if (( ret || $#fetched != $#files )); then
+  [[ -z $err ]] || print -ru2 -- $err
+  print -Pru2 -- "%F{3}z4h%f: failed to download systemd completions from %F{1}${base//\%/%%}%f"
+  return 1
+fi

@@ -40,12 +40,13 @@ zstyle ':z4h:' start-tmux no
 
 Several features in Zsh for Humans require knowing the content of the terminal
 screen, and with the above option this condition won't be satisfied. If you
-remove this `zstyle` line, Zsh for Humans will automatically start a
-stripped-down version of `tmux` (referred to as "integrated tmux" in the source
-code and discussions) that should enable the extra features with no other
-visible effects. This used to be the default in Zsh for Humans for a long time
-but eventually it's been changed because there are corner cases where integrated
-tmux can cause issues. Try removing this line and see if everything still works.
+remove this `zstyle` line, Zsh for Humans will automatically start `tmux`
+(referred to as "integrated tmux" in the source code and discussions) to enable
+the extra features. Integrated tmux is stock tmux from conda-forge, so
+scrollback lives inside tmux rather than in your terminal: scroll it with the
+mouse wheel, and hold <kbd>Shift</kbd> while selecting text to use your
+terminal's own selection. There are corner cases where integrated tmux can cause
+issues. Try removing this line and see if everything still works.
 
 If your terminal has a feature that allows it to open a new tab or window in
 the same directory as the current tab, and it doesn't work, add the following
