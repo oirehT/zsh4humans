@@ -17,7 +17,14 @@ setopt HIST_SAVE_NO_DUPS
 # Initialize zoxide integration.
 eval "$(zoxide init zsh)"
 
-# Bind Ctrl+F to run 'zi' (only in interactive shells)
+# Bind Ctrl+F to zoxide's interactive picker (only in interactive shells). It runs as a
+# widget, like Ctrl+R, so it changes directory without typing 'zi' or adding it to history.
 if [[ -o interactive ]]; then
-  bindkey -s '^F' 'zi\n'
+  function z4h-zi() {
+    local dir
+    dir="$(zoxide query --interactive)" || { zle -R; return 0 }
+    builtin cd -q -- "$dir" && -z4h-redraw-prompt
+  }
+  zle -N z4h-zi
+  bindkey '^F' z4h-zi
 fi

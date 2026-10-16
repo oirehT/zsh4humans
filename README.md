@@ -175,7 +175,9 @@ teleportation.
 Zsh for Humans integrates with [zoxide](https://github.com/ajeetdsouza/zoxide) for lightning-fast
 directory jumping.
 
-- Default hotkey: Press `Ctrl+F` to execute `zi` and interactively jump between directories.
+- Default hotkey: Press `Ctrl+F` to open zoxide's interactive picker (the same one `zi` uses) and
+  jump between directories. Like `Ctrl+R`, it runs as a widget, so nothing is typed on the command
+  line or added to history, and whatever you had already typed stays in place.
 - Fuzzy directory search: zoxide works together with `fzf` to fuzzy-find directories, which inspired
   adding this integration to the Zsh for Humans configuration.
 - Zero setup: This integration is enabled out of the box—no manual steps are required.
